@@ -269,6 +269,17 @@ async def list_outputs(
             task_type=task_type
         )
 
+        total_query = db.query(OutputArtifactORM)
+        if book_id:
+            total_query = total_query.filter(OutputArtifactORM.book_id == book_id)
+        if speaker_persona_id:
+            total_query = total_query.filter(OutputArtifactORM.speaker_persona_id == speaker_persona_id)
+        if audience_persona_id:
+            total_query = total_query.filter(OutputArtifactORM.audience_persona_id == audience_persona_id)
+        if task_type:
+            total_query = total_query.filter(OutputArtifactORM.task_type == task_type)
+        total = total_query.count()
+
         return {
             "code": 200,
             "message": "获取成功",
@@ -285,7 +296,8 @@ async def list_outputs(
                         "created_at": a.created_at.isoformat() if a.created_at else None
                     }
                     for a in artifacts
-                ]
+                ],
+                "total": total
             }
         }
 
