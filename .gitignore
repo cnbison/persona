@@ -19,6 +19,7 @@ build/
 .next/
 out/
 style-generator/
+frontend/src-tauri/target/
 
 # Logs / Temp / Runtime
 logs/
