@@ -1,0 +1,69 @@
+"""
+数据库连接管理
+"""
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
+from pathlib import Path
+from loguru import logger
+
+from app.utils.config import settings
+
+# 确保数据目录存在
+data_dir = Path("./data")
+data_dir.mkdir(exist_ok=True)
+
+# 创建数据库引擎
+engine = create_engine(
+    settings.database_url,
+    connect_args={"check_same_thread": False},  # SQLite特有配置
+    echo=settings.debug  # 调试模式打印SQL
+)
+
+# 创建SessionLocal类
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# 创建Base类
+Base = declarative_base()
+
+
+def get_db() -> Session:
+    """
+    数据库会话依赖注入
+    使用方式：
+        db: Session = Depends(get_db)
+    """
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def init_db():
+    """
+    初始化数据库
+    创建所有表
+    """
+    from app.models import orm  # 导入ORM模型
+
+    logger.info("🔧 初始化数据库...")
+    Base.metadata.create_all(bind=engine)
+    logger.info("✅ 数据库初始化完成")
+
+
+def drop_db():
+    """
+    删除所有表（谨慎使用！）
+    """
+    from app.models import orm  # 导入ORM模型
+
+    logger.warning("⚠️  删除所有数据库表...")
+    Base.metadata.drop_all(bind=engine)
+    logger.warning("🗑️  所有表已删除")
+
+
+if __name__ == "__main__":
+    # 测试数据库连接
+    init_db()
+    logger.info("✅ 数据库连接测试成功")

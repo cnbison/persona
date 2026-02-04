@@ -1,0 +1,29 @@
+# OS / Editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+.venv/
+venv/
+
+# Node / Frontend / style-generator
+node_modules/
+dist/
+build/
+.next/
+out/
+style-generator/
+
+# Logs / Temp / Runtime
+logs/
+tmp/
+*.log
+
+# Local tools
+.claude/
