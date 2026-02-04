@@ -4,13 +4,17 @@ import { Link } from 'react-router-dom';
 import { BookOpen, Users, FileText, Mic } from 'lucide-react';
 import { booksApi } from '../services/books';
 import { personasApi } from '../services/personas';
+import { audiencesApi } from '../services/audiences';
+import { outputsApi } from '../services/outputs';
 import { outlinesApi } from '../services/outlines';
 import { scriptsApi } from '../services/scripts';
 
 interface Stats {
   books: number;
   personas: number;
+  audiences: number;
   outlines: number;
+  outputs: number;
   scripts: number;
 }
 
@@ -18,7 +22,9 @@ export default function Dashboard() {
   const [stats, setStats] = useState<Stats>({
     books: 0,
     personas: 0,
+    audiences: 0,
     outlines: 0,
+    outputs: 0,
     scripts: 0,
   });
   const [loading, setLoading] = useState(true);
@@ -39,9 +45,17 @@ export default function Dashboard() {
       const personasResponse = await personasApi.listPersonas(0, 1);
       const personasCount = personasResponse.data.total || 0;
 
+      // 获取受众Persona数量
+      const audiencesResponse = await audiencesApi.listAudiences(0, 1);
+      const audiencesCount = audiencesResponse.data.total || 0;
+
       // 获取提纲数量
       const outlinesResponse = await outlinesApi.listOutlines(0, 1);
       const outlinesCount = outlinesResponse.data.total || 0;
+
+      // 获取输出数量
+      const outputsResponse = await outputsApi.listOutputs(0, 100);
+      const outputsCount = outputsResponse.data.artifacts?.length || 0;
 
       // 获取脚本数量
       const scriptsResponse = await scriptsApi.getScripts();
@@ -50,14 +64,18 @@ export default function Dashboard() {
       setStats({
         books: booksCount,
         personas: personasCount,
+        audiences: audiencesCount,
         outlines: outlinesCount,
+        outputs: outputsCount,
         scripts: scriptsCount,
       });
 
       console.log('✅ 仪表板统计数据:', {
         books: booksCount,
         personas: personasCount,
+        audiences: audiencesCount,
         outlines: outlinesCount,
+        outputs: outputsCount,
         scripts: scriptsCount,
       });
     } catch (error) {
@@ -83,11 +101,25 @@ export default function Dashboard() {
       description: '已构建的作者人格',
     },
     {
+      name: '受众Persona',
+      value: loading ? '...' : stats.audiences.toString(),
+      icon: Users,
+      color: 'bg-emerald-500',
+      description: '受众画像与适配规则',
+    },
+    {
       name: '提纲',
       value: loading ? '...' : stats.outlines.toString(),
       icon: FileText,
       color: 'bg-purple-500',
       description: '已生成的提纲输出',
+    },
+    {
+      name: '输出内容',
+      value: loading ? '...' : stats.outputs.toString(),
+      icon: FileText,
+      color: 'bg-indigo-500',
+      description: '多版本输出与诊断',
     },
     {
       name: '脚本',
