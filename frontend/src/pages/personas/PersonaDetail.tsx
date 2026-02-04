@@ -233,6 +233,71 @@ export default function PersonaDetail() {
         )}
       </div>
 
+      {/* Persona卡片 */}
+      <div className="bg-white shadow rounded-lg border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900">Persona卡片</h3>
+            <p className="text-sm text-gray-500 mt-1">用于快速校准与复用</p>
+          </div>
+          <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+            版本 v1.0
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-3">
+            <div>
+              <p className="text-xs text-gray-500 mb-1">一句话画像</p>
+              <p className="text-sm text-gray-900">
+                {persona.core_philosophy || '暂无核心哲学摘要'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">风格摘要</p>
+              <p className="text-sm text-gray-900">
+                {[
+                  persona.thinking_style && `思维方式：${persona.thinking_style}`,
+                  persona.narrative_style && `叙事：${persona.narrative_style}`,
+                  persona.tone && `语气：${persona.tone}`,
+                ]
+                  .filter(Boolean)
+                  .join(' · ') || '暂无风格摘要'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">边界提示</p>
+              <p className="text-sm text-gray-900">
+                {persona.opposed_positions && persona.opposed_positions.length > 0
+                  ? `避免主张：${persona.opposed_positions.join('、')}`
+                  : '暂无明确边界提示'}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs text-gray-500 mb-1">核心立场</p>
+              <p className="text-sm text-gray-900">
+                {(persona.core_positions || []).slice(0, 4).join('、') || '暂无'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">关键概念</p>
+              <p className="text-sm text-gray-900">
+                {Object.keys(persona.key_concepts || {}).length > 0
+                  ? Object.keys(persona.key_concepts || {}).slice(0, 4).join('、')
+                  : '暂无'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 mb-1">证据链接</p>
+              <p className="text-sm text-gray-900">暂无（待接入证据库）</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* 6维度可视化 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {dimensions.map((dimension) => (
