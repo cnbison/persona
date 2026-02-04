@@ -79,6 +79,33 @@ class AuthorPersona(BaseModel):
     version: str = "1.0"
 
 
+class AudiencePersona(BaseModel):
+    """受众Persona模型"""
+
+    audience_id: str = Field(..., description="受众Persona ID")
+    label: str = Field(..., description="受众名称（如：高中生-理科）")
+    book_id: Optional[str] = Field(None, description="关联的著作ID（可选）")
+
+    # 受众画像
+    education_stage: str = Field(..., description="教育阶段（小学/初中/高中/大学/成人）")
+    prior_knowledge: str = Field(..., description="先验知识水平（入门/基础/进阶/专家）")
+    cognitive_preference: str = Field(..., description="认知偏好（故事/逻辑/案例等）")
+    language_preference: str = Field(..., description="语言风格偏好（简洁/严谨/比喻型）")
+    tone_preference: str = Field(..., description="语气偏好（亲切/严肃/鼓励）")
+
+    # 表达控制参数（1-5）
+    term_density: int = Field(3, ge=1, le=5, description="术语密度")
+    sentence_length: int = Field(3, ge=1, le=5, description="句长复杂度")
+    abstraction_level: int = Field(3, ge=1, le=5, description="抽象程度")
+    example_complexity: int = Field(3, ge=1, le=5, description="案例复杂度")
+    proof_depth: int = Field(3, ge=1, le=5, description="论证深度")
+
+    constraints: List[str] = Field(default_factory=list, description="硬性限制")
+
+    created_at: datetime = Field(default_factory=datetime.now)
+    version: str = "1.0"
+
+
 class SystemPrompt(BaseModel):
     """角色System Prompt"""
     prompt_id: str = Field(..., description="Prompt ID")

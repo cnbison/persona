@@ -87,14 +87,14 @@ export default function Dashboard() {
       value: loading ? '...' : stats.outlines.toString(),
       icon: FileText,
       color: 'bg-purple-500',
-      description: '已生成的节目提纲',
+      description: '已生成的提纲输出',
     },
     {
       name: '脚本',
       value: loading ? '...' : stats.scripts.toString(),
       icon: Mic,
       color: 'bg-orange-500',
-      description: '已生成的对话脚本',
+      description: '已生成的对话/改写',
     },
   ];
 
@@ -104,7 +104,7 @@ export default function Dashboard() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">仪表板</h1>
         <p className="mt-1 text-sm text-gray-600">
-          欢迎使用AI著作跨时空对话播客系统
+          欢迎使用Persona生成与应用平台
         </p>
       </div>
 

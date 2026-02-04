@@ -6,8 +6,13 @@ import BookUpload from './pages/books/BookUpload';
 import BookDetail from './pages/books/BookDetail';
 import PersonaList from './pages/personas/PersonaList';
 import PersonaDetail from './pages/personas/PersonaDetail';
+import AudienceList from './pages/audiences/AudienceList';
+import AudienceDetail from './pages/audiences/AudienceDetail';
 import OutlineList from './pages/outlines/OutlineList';
 import OutlineDetail from './pages/outlines/OutlineDetail';
+import OutputList from './pages/outputs/OutputList';
+import OutputGenerate from './pages/outputs/OutputGenerate';
+import OutputDetail from './pages/outputs/OutputDetail';
 import ScriptGenerator from './pages/scripts/ScriptGenerator';
 import ScriptViewer from './pages/scripts/ScriptViewer';
 import Settings from './pages/Settings';
@@ -23,8 +28,13 @@ function App() {
           <Route path="books/:bookId" element={<BookDetail />} />
           <Route path="personas" element={<PersonaList />} />
           <Route path="personas/:personaId" element={<PersonaDetail />} />
+          <Route path="audiences" element={<AudienceList />} />
+          <Route path="audiences/:audienceId" element={<AudienceDetail />} />
           <Route path="outlines" element={<OutlineList />} />
           <Route path="outlines/:outlineId" element={<OutlineDetail />} />
+          <Route path="outputs" element={<OutputList />} />
+          <Route path="outputs/generate" element={<OutputGenerate />} />
+          <Route path="outputs/:artifactId" element={<OutputDetail />} />
           <Route path="scripts" element={<ScriptGenerator />} />
           <Route path="scripts/:scriptId" element={<ScriptViewer />} />
           <Route path="settings" element={<Settings />} />

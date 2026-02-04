@@ -38,7 +38,10 @@ class BookORM(Base):
     chapters = relationship("ChapterORM", back_populates="book", cascade="all, delete-orphan")
     viewpoints = relationship("CoreViewpointORM", back_populates="book", cascade="all, delete-orphan")
     personas = relationship("AuthorPersonaORM", back_populates="book", cascade="all, delete-orphan")
+    audience_personas = relationship("AudiencePersonaORM", back_populates="book", cascade="all, delete-orphan")
     series = relationship("BookSeriesORM", back_populates="book", cascade="all, delete-orphan")
+    outputs = relationship("OutputArtifactORM", back_populates="book", cascade="all, delete-orphan")
+    diagnostics = relationship("DiagnosticReportORM", back_populates="book", cascade="all, delete-orphan")
 
 
 class ChapterORM(Base):
@@ -129,6 +132,39 @@ class AuthorPersonaORM(Base):
     # 关联关系
     book = relationship("BookORM", back_populates="personas")
     series = relationship("BookSeriesORM", back_populates="persona")
+    outputs = relationship("OutputArtifactORM", back_populates="speaker_persona")
+    diagnostics = relationship("DiagnosticReportORM", back_populates="speaker_persona")
+
+
+class AudiencePersonaORM(Base):
+    """受众Persona表"""
+    __tablename__ = "audience_personas"
+
+    audience_id = Column(String, primary_key=True, index=True)
+    book_id = Column(String, ForeignKey("books.book_id"), nullable=True)
+    label = Column(String, nullable=False)
+
+    education_stage = Column(String, nullable=False)
+    prior_knowledge = Column(String, nullable=False)
+    cognitive_preference = Column(String, nullable=False)
+    language_preference = Column(String, nullable=False)
+    tone_preference = Column(String, nullable=False)
+
+    term_density = Column(Integer, default=3)
+    sentence_length = Column(Integer, default=3)
+    abstraction_level = Column(Integer, default=3)
+    example_complexity = Column(Integer, default=3)
+    proof_depth = Column(Integer, default=3)
+
+    constraints = Column(JSON, default=list)
+
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
+    # 关联关系
+    book = relationship("BookORM", back_populates="audience_personas")
+    outputs = relationship("OutputArtifactORM", back_populates="audience_persona")
+    diagnostics = relationship("DiagnosticReportORM", back_populates="audience_persona")
 
 
 class BookSeriesORM(Base):
@@ -207,3 +243,52 @@ class EpisodeScriptORM(Base):
 
     generation_time = Column(DateTime, default=datetime.now)
     version = Column(String, default="1.0")
+
+
+class OutputArtifactORM(Base):
+    """输出内容表（提纲/对话/改写等）"""
+    __tablename__ = "output_artifacts"
+
+    artifact_id = Column(String, primary_key=True, index=True)
+    book_id = Column(String, ForeignKey("books.book_id"), nullable=False)
+    speaker_persona_id = Column(String, ForeignKey("author_personas.persona_id"), nullable=True)
+    audience_persona_id = Column(String, ForeignKey("audience_personas.audience_id"), nullable=True)
+
+    task_type = Column(String, nullable=False)  # outline/dialogue/rewrite/explain
+    title = Column(String, nullable=True)
+
+    stage_outputs = Column(JSON, default=dict)  # canonical/plan/final
+    final_text = Column(Text, nullable=True)
+    content_format = Column(String, default="text")
+    metrics = Column(JSON, default=dict)
+
+    created_at = Column(DateTime, default=datetime.now)
+
+    # 关联关系
+    book = relationship("BookORM", back_populates="outputs")
+    speaker_persona = relationship("AuthorPersonaORM", back_populates="outputs")
+    audience_persona = relationship("AudiencePersonaORM", back_populates="outputs")
+    diagnostics = relationship("DiagnosticReportORM", back_populates="artifact", cascade="all, delete-orphan")
+
+
+class DiagnosticReportORM(Base):
+    """诊断报告表"""
+    __tablename__ = "diagnostic_reports"
+
+    report_id = Column(String, primary_key=True, index=True)
+    artifact_id = Column(String, ForeignKey("output_artifacts.artifact_id"), nullable=False)
+    book_id = Column(String, ForeignKey("books.book_id"), nullable=False)
+    speaker_persona_id = Column(String, ForeignKey("author_personas.persona_id"), nullable=True)
+    audience_persona_id = Column(String, ForeignKey("audience_personas.audience_id"), nullable=True)
+
+    metrics = Column(JSON, default=dict)
+    issues = Column(JSON, default=list)
+    suggestions = Column(Text, nullable=True)
+
+    created_at = Column(DateTime, default=datetime.now)
+
+    # 关联关系
+    book = relationship("BookORM", back_populates="diagnostics")
+    speaker_persona = relationship("AuthorPersonaORM", back_populates="diagnostics")
+    audience_persona = relationship("AudiencePersonaORM", back_populates="diagnostics")
+    artifact = relationship("OutputArtifactORM", back_populates="diagnostics")

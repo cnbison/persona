@@ -115,7 +115,10 @@ export default function PersonaDetail() {
       fields: [
         { label: '叙事方式', value: persona.narrative_style },
         { label: '语言节奏', value: persona.language_rhythm },
-        { label: '修辞手法', value: persona.rhetorical_devices },
+        {
+          label: '修辞手法',
+          value: (persona.rhetorical_devices || []).join('、'),
+        },
       ],
     },
     {
@@ -125,7 +128,10 @@ export default function PersonaDetail() {
       fields: [
         { label: '价值取向', value: persona.value_orientation },
         { label: '判断框架', value: persona.value_judgment_framework },
-        { label: '核心立场', value: persona.core_positions.join(', ') },
+        {
+          label: '核心立场',
+          value: (persona.core_positions || []).join(', '),
+        },
       ],
     },
     {
@@ -135,7 +141,10 @@ export default function PersonaDetail() {
       fields: [
         { label: '语气', value: persona.tone },
         { label: '情感倾向', value: persona.emotion_tendency },
-        { label: '性格特征', value: persona.personality_traits },
+        {
+          label: '性格特征',
+          value: (persona.personality_traits || []).join('、'),
+        },
         { label: '沟通风格', value: persona.communication_style },
       ],
     },

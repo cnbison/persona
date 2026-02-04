@@ -4,6 +4,7 @@ import {
   Home,
   BookOpen,
   User,
+  Users,
   FileText,
   Mic,
   Settings,
@@ -19,8 +20,10 @@ interface SidebarProps {
 const navigation = [
   { name: '仪表板', href: '/', icon: Home },
   { name: '著作管理', href: '/books', icon: BookOpen },
-  { name: 'Persona', href: '/personas', icon: User },
+  { name: '说者Persona', href: '/personas', icon: User },
+  { name: '受众Persona', href: '/audiences', icon: Users },
   { name: '提纲编辑', href: '/outlines', icon: FileText },
+  { name: '输出与诊断', href: '/outputs', icon: FileText },
   { name: '脚本生成', href: '/scripts', icon: Mic },
   { name: '设置', href: '/settings', icon: Settings },
 ];
@@ -46,7 +49,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-900">AI对话播客</h1>
+          <h1 className="text-xl font-bold text-gray-900">Persona平台</h1>
           <button
             onClick={onClose}
             className="lg:hidden text-gray-500 hover:text-gray-700"

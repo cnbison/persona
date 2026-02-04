@@ -1,6 +1,6 @@
 """
 FastAPI应用入口
-AI著作跨时空对话播客 - 后端服务
+Persona生成与应用平台 - 后端服务
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,7 +9,7 @@ from loguru import logger
 import sys
 
 from app.utils.config import settings
-from app.api import health, books, personas, outlines, scripts
+from app.api import health, books, personas, outlines, scripts, audiences, outputs
 
 # 配置日志
 logger.remove()  # 移除默认handler
@@ -29,7 +29,7 @@ logger.add(
 app = FastAPI(
     title=settings.project_name,
     version=settings.project_version,
-    description="AI著作跨时空对话播客 - 后端API服务",
+    description="Persona生成与应用平台 - 后端API服务",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -64,8 +64,10 @@ async def shutdown_event():
 app.include_router(health.router, prefix="/api", tags=["健康检查"])
 app.include_router(books.router, prefix="/api/books", tags=["著作管理"])
 app.include_router(personas.router, prefix="/api/personas", tags=["Persona管理"])
+app.include_router(audiences.router, prefix="/api/audiences", tags=["受众Persona"])
 app.include_router(outlines.router, prefix="/api/outlines", tags=["提纲管理"])
 app.include_router(scripts.router, prefix="/api/scripts", tags=["脚本管理"])
+app.include_router(outputs.router, prefix="/api/outputs", tags=["输出与诊断"])
 
 
 # 根路径
@@ -73,7 +75,7 @@ app.include_router(scripts.router, prefix="/api/scripts", tags=["脚本管理"])
 async def root():
     """根路径"""
     return {
-        "message": "AI著作跨时空对话播客 API",
+        "message": "Persona生成与应用平台 API",
         "version": settings.project_version,
         "docs": "/docs",
         "status": "running"

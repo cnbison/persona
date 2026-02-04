@@ -273,7 +273,7 @@ export default function Settings() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-500">应用名称</span>
-                <span className="text-gray-900">AI著作跨时空对话播客</span>
+                <span className="text-gray-900">Persona生成与应用平台</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">版本</span>

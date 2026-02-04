@@ -18,7 +18,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
       {/* Title */}
       <h2 className="text-lg font-semibold text-gray-900">
-        AI著作跨时空对话播客
+        Persona生成与应用平台
       </h2>
 
       {/* Right side - can add user info, etc. */}

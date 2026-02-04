@@ -26,7 +26,7 @@ export interface AuthorPersona {
   narrative_style?: string;
   language_rhythm?: string;
   sentence_structure?: string;
-  rhetorical_devices?: string;
+  rhetorical_devices?: string[];
 
   // 价值观
   value_orientation?: string;
@@ -38,7 +38,7 @@ export interface AuthorPersona {
   tone?: string;
   emotion_tendency?: string;
   expressiveness?: string;
-  personality_traits?: string;
+  personality_traits?: string[];
   communication_style?: string;
   attitude_toward_audience?: string;
 
