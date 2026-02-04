@@ -17,6 +17,7 @@ class OutputArtifact(BaseModel):
     task_type: str = Field(..., description="任务类型：outline/dialogue/rewrite/explain")
     title: Optional[str] = Field(None, description="标题")
 
+    locked_facts: List[str] = Field(default_factory=list, description="锁定的概念/事实")
     stage_outputs: Dict[str, str] = Field(
         default_factory=dict,
         description="阶段输出：canonical/plan/final"

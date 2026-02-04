@@ -84,6 +84,14 @@ export default function OutputDetail() {
           <div>格式：{output.content_format || 'text'}</div>
           {output.created_at && <div>创建时间：{new Date(output.created_at).toLocaleString('zh-CN')}</div>}
         </div>
+        <div className="mt-4 text-sm text-gray-700">
+          锁定概念/事实：
+          <span className="ml-2 text-gray-600">
+            {output.locked_facts && output.locked_facts.length > 0
+              ? output.locked_facts.join('、')
+              : '无'}
+          </span>
+        </div>
       </div>
 
       <div className="bg-white shadow rounded-lg border border-gray-200 p-6 space-y-4">

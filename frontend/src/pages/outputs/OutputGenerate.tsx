@@ -10,6 +10,7 @@ const defaultForm = {
   source_text: '',
   speaker_persona_id: '',
   audience_persona_id: '',
+  locked_facts: '',
   create_report: true,
 };
 
@@ -39,6 +40,9 @@ export default function OutputGenerate() {
         source_text: form.source_text,
         speaker_persona_id: form.speaker_persona_id || undefined,
         audience_persona_id: form.audience_persona_id || undefined,
+        locked_facts: form.locked_facts
+          ? form.locked_facts.split(',').map((item) => item.trim()).filter(Boolean)
+          : [],
         create_report: form.create_report,
       };
 
@@ -123,6 +127,14 @@ export default function OutputGenerate() {
             <input
               value={form.audience_persona_id}
               onChange={(e) => setForm({ ...form, audience_persona_id: e.target.value })}
+              className="mt-1 w-full rounded-md border-gray-200 text-sm"
+            />
+          </label>
+          <label className="text-sm text-gray-600 md:col-span-2">
+            锁定概念/事实（逗号分隔）
+            <input
+              value={form.locked_facts}
+              onChange={(e) => setForm({ ...form, locked_facts: e.target.value })}
               className="mt-1 w-full rounded-md border-gray-200 text-sm"
             />
           </label>

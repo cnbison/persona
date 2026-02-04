@@ -16,7 +16,12 @@ class DiagnosticEvaluator:
         self.adapter = AudienceAdapter()
         logger.info("✅ 诊断评估服务初始化成功")
 
-    def evaluate(self, text: str, audience: Optional[AudiencePersona] = None) -> Dict[str, Any]:
+    def evaluate(
+        self,
+        text: str,
+        audience: Optional[AudiencePersona] = None,
+        locked_facts: Optional[list[str]] = None
+    ) -> Dict[str, Any]:
         """生成诊断指标与问题列表"""
         metrics: Dict[str, Any] = {}
         issues: List[str] = []
@@ -45,6 +50,16 @@ class DiagnosticEvaluator:
             # 简单适配评分
             gap = abs(avg_sentence_length - target_len)
             metrics["audience_fit_score"] = max(0.0, round(1 - (gap / max(target_len, 1)), 2))
+
+        missing_locked = []
+        for item in locked_facts or []:
+            if item and item not in cleaned:
+                missing_locked.append(item)
+
+        if missing_locked:
+            issues.append("锁定概念/事实未完整保留")
+            metrics["locked_facts_missing"] = len(missing_locked)
+            metrics["locked_facts_total"] = len(locked_facts or [])
 
         if char_count < 200:
             issues.append("内容偏短，信息量可能不足")

@@ -8,6 +8,7 @@ export interface CreateOutputRequest {
   audience_persona_id?: string | null;
   task_type: string;
   title?: string;
+  locked_facts?: string[];
   stage_outputs?: Record<string, string>;
   final_text?: string;
   content_format?: string;
@@ -22,6 +23,7 @@ export interface GenerateOutputRequest {
   content_format?: string;
   speaker_persona_id?: string | null;
   audience_persona_id?: string | null;
+  locked_facts?: string[];
   create_report?: boolean;
 }
 
