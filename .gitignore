@@ -18,6 +18,7 @@ dist/
 build/
 .next/
 out/
+frontend/.npm-cache/
 style-generator/
 frontend/src-tauri/target/
 
