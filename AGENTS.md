@@ -21,6 +21,7 @@
 - PRD 以 `PRD-Persona.md` 为主。
 - 架构与实现说明同步到 `ARCHITECTURE.md`。
 - 任务规划以 `TASKS.md` 为准；检查验收以 `CHECKLIST.md` 为准。
+- 每完成一个功能性开发任务，必须同步更新 `TASKS.md`（标记完成/新增/调整条目），保持进度可追溯。
 - `PROGRESS*.md` 为历史记录，已归档到 `docs/history/`。
 - `legacy-src` 已归档到 `docs/history/legacy-src/`，不再作为现行代码入口。
 - 竞品参考以 `COMPETITIVE_ANALYSIS.md` 为准。
