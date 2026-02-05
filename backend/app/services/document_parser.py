@@ -107,7 +107,7 @@ class DocumentParser:
 
         # 识别章节
         logger.info("📚 开始识别章节结构...")
-        chapters, chapter_stats = self._identify_chapters(text, file_ext)
+        chapters, chapter_stats = self._identify_chapters(text, file_ext, title or Path(file_path).stem)
         logger.info(f"✅ 识别到 {len(chapters)} 个章节")
 
         # 提取核心观点
@@ -259,7 +259,7 @@ class DocumentParser:
 
         return "\n".join(filtered).strip()
 
-    def _identify_chapters(self, text: str, file_type: str) -> tuple[List[Chapter], Dict]:
+    def _identify_chapters(self, text: str, file_type: str, book_title: Optional[str] = None) -> tuple[List[Chapter], Dict]:
         """
         识别章节结构
 
@@ -344,37 +344,42 @@ class DocumentParser:
             cleaned = cleaned.replace('第', '')
             return cleaned
 
+        # 书名辅助判断
+        title_hint = book_title or ""
+        is_lunyu = "论语" in title_hint or "论语" in text[:2000]
+
         # 查找所有章节标题位置
         chapter_positions = []
         lines = text.split('\n')
 
-        # 策略1: 尝试常见章节标题模式
-        for i, line in enumerate(lines):
-            # 跳过脚注行（以①②③或[1][2][3]开头的行）
-            stripped_line = line.strip()
-            if re.match(r'^[①②③④⑤⑥⑦⑧⑨⑩\[\d]]', stripped_line):
-                continue
+        # 策略1: 尝试常见章节标题模式（若非论语）
+        if not is_lunyu:
+            for i, line in enumerate(lines):
+                # 跳过脚注行（以①②③或[1][2][3]开头的行）
+                stripped_line = line.strip()
+                if re.match(r'^[①②③④⑤⑥⑦⑧⑨⑩\[\d]]', stripped_line):
+                    continue
 
-            for pattern in chapter_patterns:
-                match = re.match(pattern, stripped_line)
-                if match:
-                    # 提取更清晰的标题
-                    title = stripped_line
+                for pattern in chapter_patterns:
+                    match = re.match(pattern, stripped_line)
+                    if match:
+                        # 提取更清晰的标题
+                        title = stripped_line
 
-                    # 特殊处理"第【X】段：Y卷"格式
-                    if '第【' in title and '段：' in title:
-                        # 提取"Y卷"部分作为标题
-                        parts = title.split('：', 1)
-                        if len(parts) > 1:
-                            title = parts[1].strip()
+                        # 特殊处理"第【X】段：Y卷"格式
+                        if '第【' in title and '段：' in title:
+                            # 提取"Y卷"部分作为标题
+                            parts = title.split('：', 1)
+                            if len(parts) > 1:
+                                title = parts[1].strip()
 
-                    chapter_positions.append({
-                        'line_num': i,
-                        'title': title,
-                        'content_start': i + 1
-                    })
-                    stats["patterns_matched"] += 1
-                    break
+                        chapter_positions.append({
+                            'line_num': i,
+                            'title': title,
+                            'content_start': i + 1
+                        })
+                        stats["patterns_matched"] += 1
+                        break
 
         # 策略2: 尝试匹配已知书籍的章节列表（更优先）
         for book_name, chapters_list in known_book_chapters.items():
@@ -392,6 +397,17 @@ class DocumentParser:
                         'title': normalized_targets[normalized_line],
                         'content_start': i + 1
                     })
+                    continue
+
+                # 处理“学而第一/为政第二”等样式：前缀匹配章节名
+                for normalized_target, original_title in normalized_targets.items():
+                    if normalized_line.startswith(normalized_target) and len(normalized_line) <= len(normalized_target) + 4:
+                        found_chapters.append({
+                            'line_num': i,
+                            'title': original_title,
+                            'content_start': i + 1
+                        })
+                        break
 
             # 如果找到至少一半章节（论语为10+），认为匹配成功
             threshold = max(3, len(chapters_list) // 2)
