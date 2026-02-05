@@ -359,9 +359,14 @@ class DocumentParser:
                 return True
             if re.match(r'^第?\s*\d+\s*页$', line):
                 return True
-            if line.startswith("参见") and "《" in line:
+            if re.match(r'^(注|按|又按|译注|校注|说明)[：:]?', line):
                 return True
-            if line.startswith("见") and "《" in line:
+            if line.startswith("参见") or line.startswith("见"):
+                return True
+            if ("参见" in line or "见" in line) and "《" in line:
+                return True
+            # 引用型脚注（含卷/节/篇/页等细目）
+            if re.search(r'《.+》.*(卷|节|篇|页)', line):
                 return True
             return False
 
@@ -403,6 +408,13 @@ class DocumentParser:
             threshold = 4 if has_structure else 6
             if score >= threshold:
                 title = stripped_line
+                # 进一步过滤脚注样式标题
+                if re.match(r'^[①②③④⑤⑥⑦⑧⑨⑩]', title):
+                    continue
+                if ("参见" in title or "见" in title) and "《" in title:
+                    continue
+                if re.search(r'《.+》.*(卷|节|篇|页)', title) and not re.match(r'^第[一二三四五六七八九十百零\d]+(卷|章|篇|节)', title):
+                    continue
                 if '第【' in title and '段：' in title:
                     parts = title.split('：', 1)
                     if len(parts) > 1:
