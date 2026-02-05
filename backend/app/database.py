@@ -77,6 +77,14 @@ def ensure_schema():
                 logger.info("🔧 发现缺失列 author_personas.evidence_links，执行迁移...")
                 conn.execute(text("ALTER TABLE author_personas ADD COLUMN evidence_links JSON"))
                 logger.info("✅ 已补齐 author_personas.evidence_links")
+
+            # chapters.paragraph_count
+            result = conn.execute(text("PRAGMA table_info(chapters)"))
+            columns = {row[1] for row in result.fetchall()}
+            if "paragraph_count" not in columns:
+                logger.info("🔧 发现缺失列 chapters.paragraph_count，执行迁移...")
+                conn.execute(text("ALTER TABLE chapters ADD COLUMN paragraph_count INTEGER"))
+                logger.info("✅ 已补齐 chapters.paragraph_count")
     except Exception as e:
         logger.error(f"❌ 数据库迁移失败: {e}")
 
