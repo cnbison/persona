@@ -29,6 +29,7 @@ class BookORM(Base):
     version = Column(String, nullable=True)
     publisher = Column(String, nullable=True)
     publish_year = Column(Integer, nullable=True)
+    parse_stats = Column(JSON, default=dict)
 
     # 时间戳
     created_at = Column(DateTime, default=datetime.now)

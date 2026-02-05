@@ -29,7 +29,8 @@ def create_book(db: Session, book: Book) -> BookORM:
         file_type=book.file_type,
         total_words=book.total_words,
         total_chapters=len(book.chapters),
-        total_viewpoints=len(book.core_viewpoints)
+        total_viewpoints=len(book.core_viewpoints),
+        parse_stats=book.parse_stats or {}
     )
 
     db.add(db_book)

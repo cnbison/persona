@@ -9,6 +9,7 @@ export interface Book {
   total_words?: number;  // 可选字段，后端可能不返回
   total_chapters: number;
   total_viewpoints: number;
+  parse_stats?: Record<string, any>;
   created_at: string;
 }
 

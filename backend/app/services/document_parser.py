@@ -93,6 +93,7 @@ class DocumentParser:
         else:
             raise ValueError(f"不支持的文件格式: {file_ext}")
 
+        raw_text = text
         logger.info(f"✅ 文本提取完成，总字数: {len(text)}")
 
         # 清洗文本
@@ -100,11 +101,13 @@ class DocumentParser:
         text = self.text_processor.clean_text(text)
         text = self.text_processor.remove_redundant_info(text)
         text = self._remove_repeated_lines(text)
+        cleaned_lines = [line for line in text.split('\n') if line.strip()]
+        raw_lines = [line for line in raw_text.split('\n') if line.strip()]
         logger.info(f"✅ 文本清洗完成，清洗后字数: {len(text)}")
 
         # 识别章节
         logger.info("📚 开始识别章节结构...")
-        chapters = self._identify_chapters(text, file_ext)
+        chapters, chapter_stats = self._identify_chapters(text, file_ext)
         logger.info(f"✅ 识别到 {len(chapters)} 个章节")
 
         # 提取核心观点
@@ -113,6 +116,15 @@ class DocumentParser:
         logger.info(f"✅ 提取到 {len(core_viewpoints)} 个核心观点")
 
         # 创建Book对象
+        parse_stats = {
+            "raw_chars": len(raw_text),
+            "cleaned_chars": len(text),
+            "raw_lines": len(raw_lines),
+            "cleaned_lines": len(cleaned_lines),
+            "chapters_detected": len(chapters),
+            "chapter_detection": chapter_stats
+        }
+
         book = Book(
             book_id=str(uuid.uuid4()),
             title=title or Path(file_path).stem,
@@ -122,7 +134,8 @@ class DocumentParser:
             file_type=file_ext,
             chapters=chapters,
             core_viewpoints=core_viewpoints,
-            total_words=self.text_processor.count_words(text)
+            total_words=self.text_processor.count_words(text),
+            parse_stats=parse_stats
         )
 
         logger.info(f"🎉 著作解析完成: {book.title}")
@@ -246,7 +259,7 @@ class DocumentParser:
 
         return "\n".join(filtered).strip()
 
-    def _identify_chapters(self, text: str, file_type: str) -> List[Chapter]:
+    def _identify_chapters(self, text: str, file_type: str) -> tuple[List[Chapter], Dict]:
         """
         识别章节结构
 
@@ -257,6 +270,12 @@ class DocumentParser:
         4. 为每个章节创建Chapter对象
         """
         chapters = []
+        stats = {
+            "strategy": "pattern",
+            "patterns_matched": 0,
+            "known_book_hit": None,
+            "fallback": False
+        }
 
         # 已知书籍的章节列表
         known_book_chapters = {
@@ -323,6 +342,7 @@ class DocumentParser:
                         'title': title,
                         'content_start': i + 1
                     })
+                    stats["patterns_matched"] += 1
                     break
 
         # 策略2: 如果没有找到，尝试匹配已知书籍的章节列表
@@ -347,12 +367,16 @@ class DocumentParser:
                     # 按行号排序
                     found_chapters.sort(key=lambda x: x['line_num'])
                     chapter_positions = found_chapters
+                    stats["strategy"] = "known_book"
+                    stats["known_book_hit"] = book_name
                     logger.info(f"✅ 识别为《{book_name}》格式，找到 {len(found_chapters)} 个章节")
                     break
 
         # 如果没找到章节，按段落分割
         if not chapter_positions:
             logger.warning("⚠️  未检测到章节结构，按段落分割")
+            stats["strategy"] = "fallback_paragraph"
+            stats["fallback"] = True
             paragraphs = self.text_processor.split_text_by_paragraph(text)
 
             # 每10个段落合并为一章
@@ -454,7 +478,7 @@ class DocumentParser:
                             page_range=None
                         ))
 
-        return chapters
+        return chapters, stats
 
     async def _extract_core_viewpoints(
         self,

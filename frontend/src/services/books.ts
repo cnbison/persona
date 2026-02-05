@@ -18,6 +18,13 @@ export const booksApi = {
   },
 
   /**
+   * 获取解析统计
+   */
+  getParseStats: async (bookId: string) => {
+    return apiClient.get(`/books/${bookId}/parse-stats`);
+  },
+
+  /**
    * 上传并解析著作
    */
   uploadBook: async (file: File, title?: string, author?: string) => {

@@ -30,6 +30,7 @@ export default function BookDetail() {
   const [paragraphs, setParagraphs] = useState<ParagraphItem[]>([]);
   const [paragraphsLoading, setParagraphsLoading] = useState(false);
   const [paragraphsError, setParagraphsError] = useState<string | null>(null);
+  const [parseStats, setParseStats] = useState<Record<string, any> | null>(null);
 
   useEffect(() => {
     if (bookId) {
@@ -55,6 +56,7 @@ export default function BookDetail() {
       setError(null);
       const response = await booksApi.getBook(bookId);
       setBook(response.data);
+      setParseStats(response.data?.parse_stats || null);
     } catch (err: any) {
       setError(err.message || '加载失败');
       console.error('加载著作详情失败:', err);
@@ -227,6 +229,25 @@ export default function BookDetail() {
             </div>
           </div>
         </div>
+
+        {parseStats && (
+          <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4 text-xs text-gray-700">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-gray-800">解析统计</span>
+              <span className="text-gray-500">
+                章节识别策略：{parseStats.chapter_detection?.strategy || 'unknown'}
+              </span>
+            </div>
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>原始字符数：{parseStats.raw_chars ?? '-'}</div>
+              <div>清洗后字符数：{parseStats.cleaned_chars ?? '-'}</div>
+              <div>原始行数：{parseStats.raw_lines ?? '-'}</div>
+              <div>清洗后行数：{parseStats.cleaned_lines ?? '-'}</div>
+              <div>章节命中数：{parseStats.chapters_detected ?? '-'}</div>
+              <div>匹配标题数：{parseStats.chapter_detection?.patterns_matched ?? '-'}</div>
+            </div>
+          </div>
+        )}
 
         {/* 快速操作 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

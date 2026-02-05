@@ -108,12 +108,13 @@ async def get_books_list(
                         "title": b.title,
                         "author": b.author,
                         "language": b.language,
-                        "file_type": b.file_type,
-                        "total_chapters": b.total_chapters,
-                        "total_viewpoints": b.total_viewpoints,
-                        "created_at": b.created_at.isoformat()
-                    }
-                    for b in books
+                "file_type": b.file_type,
+                "total_chapters": b.total_chapters,
+                "total_viewpoints": b.total_viewpoints,
+                "parse_stats": b.parse_stats or {},
+                "created_at": b.created_at.isoformat()
+            }
+            for b in books
                 ],
                 "total": total_count
             }
@@ -171,6 +172,7 @@ async def get_book_detail(book_id: str, db: Session = Depends(get_db)):
                 "total_words": db_book.total_words,
                 "total_chapters": db_book.total_chapters,
                 "total_viewpoints": db_book.total_viewpoints,
+                "parse_stats": db_book.parse_stats or {},
                 "chapters": chapters,
                 "viewpoints": viewpoints,
                 "created_at": db_book.created_at.isoformat()
@@ -181,6 +183,31 @@ async def get_book_detail(book_id: str, db: Session = Depends(get_db)):
         raise
     except Exception as e:
         logger.error(f"❌ 获取著作详情失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{book_id}/parse-stats", summary="获取解析统计")
+async def get_parse_stats(book_id: str, db: Session = Depends(get_db)):
+    """获取著作解析统计信息"""
+    try:
+        db_book = get_book(db, book_id)
+        if not db_book:
+            raise HTTPException(status_code=404, detail="著作不存在")
+
+        return {
+            "code": 200,
+            "message": "获取成功",
+            "data": {
+                "book_id": db_book.book_id,
+                "title": db_book.title,
+                "author": db_book.author,
+                "parse_stats": db_book.parse_stats or {}
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ 获取解析统计失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -209,4 +236,3 @@ async def delete_book_endpoint(book_id: str, db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"❌ 删除著作失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-

@@ -40,6 +40,7 @@ class Book(BaseModel):
 
     # 元数据
     total_words: int = Field(default=0, description="总字数")
+    parse_stats: dict = Field(default_factory=dict, description="解析统计")
     created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
     updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
 
