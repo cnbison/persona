@@ -344,44 +344,68 @@ class DocumentParser:
             cleaned = cleaned.replace('第', '')
             return cleaned
 
-        # 书名辅助判断
-        title_hint = book_title or ""
-        is_lunyu = "论语" in title_hint or "论语" in text[:2000]
-
         # 查找所有章节标题位置
         chapter_positions = []
         lines = text.split('\n')
 
-        # 策略1: 尝试常见章节标题模式（若非论语）
-        if not is_lunyu:
-            for i, line in enumerate(lines):
-                # 跳过脚注行（以①②③或[1][2][3]开头的行）
-                stripped_line = line.strip()
-                if re.match(r'^[①②③④⑤⑥⑦⑧⑨⑩\[\d]]', stripped_line):
-                    continue
+        def is_noise_line(line: str) -> bool:
+            if not line:
+                return True
+            if re.match(r'^[①②③④⑤⑥⑦⑧⑨⑩\[\d]]', line):
+                return True
+            if re.match(r'^\d+$', line):
+                return True
+            if re.match(r'^-?\s*\d+\s*-?$', line):
+                return True
+            if re.match(r'^第?\s*\d+\s*页$', line):
+                return True
+            return False
 
-                for pattern in chapter_patterns:
-                    match = re.match(pattern, stripped_line)
-                    if match:
-                        # 提取更清晰的标题
-                        title = stripped_line
+        # 策略1: 通用章节标题评分
+        for i, line in enumerate(lines):
+            stripped_line = line.strip()
+            if is_noise_line(stripped_line):
+                continue
 
-                        # 特殊处理"第【X】段：Y卷"格式
-                        if '第【' in title and '段：' in title:
-                            # 提取"Y卷"部分作为标题
-                            parts = title.split('：', 1)
-                            if len(parts) > 1:
-                                title = parts[1].strip()
+            score = 0
+            # 行长度更像标题（短行）
+            if 1 <= len(stripped_line) <= 20:
+                score += 2
+            elif len(stripped_line) <= 30:
+                score += 1
 
-                        chapter_positions.append({
-                            'line_num': i,
-                            'title': title,
-                            'content_start': i + 1
-                        })
-                        stats["patterns_matched"] += 1
-                        break
+            # 常见标题模式
+            for pattern in chapter_patterns:
+                if re.match(pattern, stripped_line):
+                    score += 3
+                    break
 
-        # 策略2: 尝试匹配已知书籍的章节列表（更优先）
+            # 章节关键词
+            if re.search(r'(章|卷|篇|节|Chapter|CHAPTER|Part|PART)', stripped_line):
+                score += 2
+
+            # 前后空行（标题常独占行）
+            prev_line = lines[i - 1].strip() if i > 0 else ""
+            next_line = lines[i + 1].strip() if i + 1 < len(lines) else ""
+            if not prev_line:
+                score += 1
+            if not next_line:
+                score += 1
+
+            if score >= 4:
+                title = stripped_line
+                if '第【' in title and '段：' in title:
+                    parts = title.split('：', 1)
+                    if len(parts) > 1:
+                        title = parts[1].strip()
+                chapter_positions.append({
+                    'line_num': i,
+                    'title': title,
+                    'content_start': i + 1
+                })
+                stats["patterns_matched"] += 1
+
+        # 策略2: 尝试匹配已知书籍的章节列表（通用辅助）
         for book_name, chapters_list in known_book_chapters.items():
             found_chapters = []
             normalized_targets = {normalize_title(t): t for t in chapters_list}
@@ -409,7 +433,7 @@ class DocumentParser:
                         })
                         break
 
-            # 如果找到至少一半章节（论语为10+），认为匹配成功
+            # 如果找到至少一半章节，认为匹配成功
             threshold = max(3, len(chapters_list) // 2)
             if len(found_chapters) >= threshold:
                 found_chapters.sort(key=lambda x: x['line_num'])
