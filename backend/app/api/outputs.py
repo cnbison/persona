@@ -9,7 +9,7 @@ from loguru import logger
 import uuid
 
 from app.database import get_db
-from app.models.orm import BookORM, AuthorPersonaORM, AudiencePersonaORM
+from app.models.orm import BookORM, AuthorPersonaORM, AudiencePersonaORM, OutputArtifactORM
 from app.models.output import OutputArtifact, DiagnosticReport
 from app.models.persona import AudiencePersona
 from app.services.audience_adapter import get_audience_adapter
