@@ -1,7 +1,7 @@
 // 输出内容列表页面
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FileText, Plus, GitCompare } from 'lucide-react';
+import { FileText, Plus, GitCompare, Activity } from 'lucide-react';
 import { outputsApi } from '../../services/outputs';
 import type { OutputArtifact } from '../../types/output';
 
@@ -50,6 +50,13 @@ export default function OutputList() {
           >
             <GitCompare className="w-4 h-4 mr-2" />
             Diff 对比
+          </button>
+          <button
+            onClick={() => navigate('/outputs/heatmap')}
+            className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-white border border-gray-200 hover:bg-gray-50"
+          >
+            <Activity className="w-4 h-4 mr-2" />
+            风格热力图
           </button>
           <div className="inline-flex items-center text-sm text-gray-500">
             <FileText className="w-4 h-4 mr-2" />
