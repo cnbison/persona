@@ -56,7 +56,8 @@ export default function Dashboard() {
       // 获取输出数量
       const outputsResponse = await outputsApi.listOutputs(0, 100);
       const outputsCount =
-        outputsResponse.data.total ?? outputsResponse.data.artifacts?.length || 0;
+        outputsResponse.data.total ??
+        (outputsResponse.data.artifacts?.length || 0);
 
       // 获取脚本数量
       const scriptsResponse = await scriptsApi.getScripts();

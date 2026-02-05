@@ -18,6 +18,7 @@ def create_output_artifact(db: Session, artifact: OutputArtifact) -> OutputArtif
         audience_persona_id=artifact.audience_persona_id,
         task_type=artifact.task_type,
         title=artifact.title,
+        style_config=artifact.style_config,
         locked_facts=artifact.locked_facts,
         stage_outputs=artifact.stage_outputs,
         final_text=artifact.final_text,

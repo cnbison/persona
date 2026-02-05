@@ -89,7 +89,7 @@ export default function HeatmapView() {
         )}
         <textarea
           rows={6}
-          placeholder="粘贴诊断指标JSON，例如 {\"term_density_estimate\":0.12}"
+          placeholder={'粘贴诊断指标JSON，例如 {"term_density_estimate":0.12}'}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           className="w-full rounded-md border-gray-200 text-sm"

@@ -92,6 +92,12 @@ export default function OutputDetail() {
               : '无'}
           </span>
         </div>
+        <div className="mt-4 text-sm text-gray-700">
+          风格参数：
+          <pre className="mt-2 bg-gray-50 rounded-md p-3 text-xs text-gray-600 whitespace-pre-wrap">
+            {output.style_config ? JSON.stringify(output.style_config, null, 2) : '无'}
+          </pre>
+        </div>
       </div>
 
       <div className="bg-white shadow rounded-lg border border-gray-200 p-6 space-y-4">

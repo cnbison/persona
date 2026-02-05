@@ -11,6 +11,17 @@ const defaultForm = {
   speaker_persona_id: '',
   audience_persona_id: '',
   locked_facts: '',
+  mix_structure: 70,
+  mix_perception: 55,
+  mix_meaning: 50,
+  mix_distribution: 35,
+  skin_sentence_length: 55,
+  skin_abstraction: 45,
+  skin_emotion: 30,
+  task_content_type: 'general',
+  task_primary_goal: 'clarity',
+  task_audience: 55,
+  custom_prompt: '',
   create_report: true,
 };
 
@@ -43,6 +54,25 @@ export default function OutputGenerate() {
         locked_facts: form.locked_facts
           ? form.locked_facts.split(',').map((item) => item.trim()).filter(Boolean)
           : [],
+        style_config: {
+          mix: {
+            structure: form.mix_structure,
+            perception: form.mix_perception,
+            meaning: form.mix_meaning,
+            distribution: form.mix_distribution,
+          },
+          skin: {
+            sentenceLength: form.skin_sentence_length,
+            abstraction: form.skin_abstraction,
+            emotion: form.skin_emotion,
+          },
+          task: {
+            contentType: form.task_content_type,
+            primaryGoal: form.task_primary_goal,
+            audience: form.task_audience,
+          },
+          customPrompt: form.custom_prompt,
+        },
         create_report: form.create_report,
       };
 
@@ -157,6 +187,89 @@ export default function OutputGenerate() {
             className="mt-1 w-full rounded-md border-gray-200 text-sm"
           />
         </label>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900">风格混音</h3>
+            {[
+              { key: 'mix_structure', label: '结构', value: form.mix_structure },
+              { key: 'mix_perception', label: '感知', value: form.mix_perception },
+              { key: 'mix_meaning', label: '意义', value: form.mix_meaning },
+              { key: 'mix_distribution', label: '分布', value: form.mix_distribution },
+            ].map((item) => (
+              <label key={item.key} className="text-xs text-gray-600 block">
+                {item.label}: {item.value}
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={item.value}
+                  onChange={(e) => setForm({ ...form, [item.key]: Number(e.target.value) } as any)}
+                  className="mt-1 w-full"
+                />
+              </label>
+            ))}
+          </div>
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900">语言皮肤</h3>
+            {[
+              { key: 'skin_sentence_length', label: '句长', value: form.skin_sentence_length },
+              { key: 'skin_abstraction', label: '抽象', value: form.skin_abstraction },
+              { key: 'skin_emotion', label: '情感', value: form.skin_emotion },
+            ].map((item) => (
+              <label key={item.key} className="text-xs text-gray-600 block">
+                {item.label}: {item.value}
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={item.value}
+                  onChange={(e) => setForm({ ...form, [item.key]: Number(e.target.value) } as any)}
+                  className="mt-1 w-full"
+                />
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <label className="text-sm text-gray-600">
+            内容类型
+            <input
+              value={form.task_content_type}
+              onChange={(e) => setForm({ ...form, task_content_type: e.target.value })}
+              className="mt-1 w-full rounded-md border-gray-200 text-sm"
+            />
+          </label>
+          <label className="text-sm text-gray-600">
+            主要目标
+            <input
+              value={form.task_primary_goal}
+              onChange={(e) => setForm({ ...form, task_primary_goal: e.target.value })}
+              className="mt-1 w-full rounded-md border-gray-200 text-sm"
+            />
+          </label>
+          <label className="text-sm text-gray-600 md:col-span-2">
+            受众强度: {form.task_audience}
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={form.task_audience}
+              onChange={(e) => setForm({ ...form, task_audience: Number(e.target.value) })}
+              className="mt-1 w-full"
+            />
+          </label>
+          <label className="text-sm text-gray-600 md:col-span-2">
+            额外Prompt（可选）
+            <textarea
+              rows={3}
+              value={form.custom_prompt}
+              onChange={(e) => setForm({ ...form, custom_prompt: e.target.value })}
+              className="mt-1 w-full rounded-md border-gray-200 text-sm"
+            />
+          </label>
+        </div>
 
         <div className="flex justify-end">
           <button

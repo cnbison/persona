@@ -257,6 +257,7 @@ class OutputArtifactORM(Base):
     task_type = Column(String, nullable=False)  # outline/dialogue/rewrite/explain
     title = Column(String, nullable=True)
 
+    style_config = Column(JSON, default=dict)
     locked_facts = Column(JSON, default=list)
     stage_outputs = Column(JSON, default=dict)  # canonical/plan/final
     final_text = Column(Text, nullable=True)

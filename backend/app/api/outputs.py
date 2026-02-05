@@ -4,7 +4,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from loguru import logger
 import uuid
 
@@ -37,6 +37,7 @@ class CreateOutputArtifactRequest(BaseModel):
     task_type: str = Field(..., description="任务类型")
     title: Optional[str] = Field(None, description="标题")
 
+    style_config: Dict[str, Any] = Field(default_factory=dict, description="风格参数配置")
     locked_facts: List[str] = Field(default_factory=list, description="锁定概念/事实")
     stage_outputs: Dict[str, str] = Field(default_factory=dict, description="阶段输出")
     final_text: Optional[str] = Field(None, description="最终文本")
@@ -64,6 +65,7 @@ class GenerateOutputRequest(BaseModel):
     speaker_persona_id: Optional[str] = Field(None, description="说者Persona ID")
     audience_persona_id: Optional[str] = Field(None, description="受众Persona ID")
     locked_facts: List[str] = Field(default_factory=list, description="锁定概念/事实")
+    style_config: Dict[str, Any] = Field(default_factory=dict, description="风格参数配置")
 
     create_report: bool = Field(default=True, description="是否生成诊断报告")
 
@@ -99,6 +101,7 @@ async def create_output(
             audience_persona_id=request.audience_persona_id,
             task_type=request.task_type,
             title=request.title,
+            style_config=request.style_config,
             locked_facts=request.locked_facts,
             stage_outputs=request.stage_outputs,
             final_text=request.final_text,
@@ -198,7 +201,8 @@ async def generate_output(
             speaker_profile=speaker_profile,
             audience_profile=audience_profile,
             constraints=constraints,
-            locked_facts=request.locked_facts
+            locked_facts=request.locked_facts,
+            style_config=request.style_config
         )
 
         artifact_id = uuid.uuid4().hex
@@ -209,6 +213,7 @@ async def generate_output(
             audience_persona_id=request.audience_persona_id,
             task_type=request.task_type,
             title=request.title,
+            style_config=request.style_config,
             locked_facts=request.locked_facts,
             stage_outputs=outputs,
             final_text=outputs.get("final"),
@@ -301,6 +306,7 @@ async def list_outputs(
                         "audience_persona_id": a.audience_persona_id,
                         "task_type": a.task_type,
                         "title": a.title,
+                        "style_config": a.style_config,
                         "locked_facts": a.locked_facts,
                         "content_format": a.content_format,
                         "created_at": a.created_at.isoformat() if a.created_at else None
@@ -334,6 +340,7 @@ async def get_output_detail(artifact_id: str, db: Session = Depends(get_db)):
                 "audience_persona_id": artifact.audience_persona_id,
                 "task_type": artifact.task_type,
                 "title": artifact.title,
+                "style_config": artifact.style_config,
                 "locked_facts": artifact.locked_facts,
                 "stage_outputs": artifact.stage_outputs,
                 "final_text": artifact.final_text,

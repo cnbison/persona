@@ -2,7 +2,7 @@
 输出内容与诊断模型
 """
 from pydantic import BaseModel, Field
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from datetime import datetime
 
 
@@ -17,6 +17,7 @@ class OutputArtifact(BaseModel):
     task_type: str = Field(..., description="任务类型：outline/dialogue/rewrite/explain")
     title: Optional[str] = Field(None, description="标题")
 
+    style_config: Dict[str, Any] = Field(default_factory=dict, description="风格参数配置")
     locked_facts: List[str] = Field(default_factory=list, description="锁定的概念/事实")
     stage_outputs: Dict[str, str] = Field(
         default_factory=dict,

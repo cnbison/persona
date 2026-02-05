@@ -7,6 +7,7 @@ export interface OutputArtifact {
   audience_persona_id?: string | null;
   task_type: string;
   title?: string | null;
+  style_config?: Record<string, unknown>;
   locked_facts?: string[];
   stage_outputs?: Record<string, string>;
   final_text?: string | null;

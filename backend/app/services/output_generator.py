@@ -24,6 +24,7 @@ class OutputGenerator:
         audience_profile: Optional[Dict[str, Any]] = None,
         constraints: Optional[Dict[str, Any]] = None,
         locked_facts: Optional[list[str]] = None,
+        style_config: Optional[Dict[str, Any]] = None,
         max_tokens: int = 1200
     ) -> Dict[str, str]:
         """生成 canonical/plan/final 三阶段输出"""
@@ -33,7 +34,8 @@ class OutputGenerator:
             speaker_profile=speaker_profile,
             audience_profile=audience_profile,
             constraints=constraints,
-            locked_facts=locked_facts
+            locked_facts=locked_facts,
+            style_config=style_config
         )
 
         messages = [
@@ -62,12 +64,14 @@ class OutputGenerator:
         speaker_profile: Optional[Dict[str, Any]],
         audience_profile: Optional[Dict[str, Any]],
         constraints: Optional[Dict[str, Any]],
-        locked_facts: Optional[list[str]]
+        locked_facts: Optional[list[str]],
+        style_config: Optional[Dict[str, Any]]
     ) -> str:
         speaker_block = json.dumps(speaker_profile or {}, ensure_ascii=False, indent=2)
         audience_block = json.dumps(audience_profile or {}, ensure_ascii=False, indent=2)
         constraint_block = json.dumps(constraints or {}, ensure_ascii=False, indent=2)
         locked_block = json.dumps(locked_facts or [], ensure_ascii=False, indent=2)
+        style_block = json.dumps(style_config or {}, ensure_ascii=False, indent=2)
 
         return f"""
 你将基于给定文本，输出三阶段内容：canonical/plan/final。
@@ -82,6 +86,9 @@ class OutputGenerator:
 
 【表达约束】
 {constraint_block}
+
+【风格参数】
+{style_block}
 
 【锁定概念/事实（必须原样保留，不可改写/替换/删除）】
 {locked_block}
