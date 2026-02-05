@@ -17,6 +17,16 @@ export interface GeneratePromptResponse {
   system_prompt: string;
 }
 
+export interface ImportPersonaResponse {
+  persona_id: string;
+  version: string;
+}
+
+export interface CreatePersonaVersionResponse {
+  persona_id: string;
+  version: string;
+}
+
 export interface ListPersonasResponse {
   items: AuthorPersona[];
   total: number;
@@ -63,6 +73,19 @@ export const personasApi = {
     return apiClient.post<any, PersonaDiffResult>('/personas/diff', {
       source_id: sourceId,
       target_id: targetId,
+    });
+  },
+
+  importPersona: async (payload: Record<string, any>, mode: 'new' | 'new_version' | 'overwrite' = 'new_version') => {
+    return apiClient.post<any, ImportPersonaResponse>('/personas/import', {
+      mode,
+      persona: payload,
+    });
+  },
+
+  createPersonaVersion: async (personaId: string, version?: string) => {
+    return apiClient.post<any, CreatePersonaVersionResponse>(`/personas/${personaId}/versions`, {
+      version,
     });
   },
 };

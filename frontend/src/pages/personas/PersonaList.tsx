@@ -1,7 +1,7 @@
 // Persona列表页面
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { User, Plus, BookOpen, Eye } from 'lucide-react';
+import { User, Plus, BookOpen, Eye, Upload } from 'lucide-react';
 import { booksApi } from '../../services/books';
 import { personasApi } from '../../services/personas';
 import type { Book } from '../../types/book';
@@ -13,6 +13,10 @@ export default function PersonaList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [buildingPersonaId, setBuildingPersonaId] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importMode, setImportMode] = useState<'new' | 'new_version' | 'overwrite'>('new_version');
+  const [importResult, setImportResult] = useState<string | null>(null);
+  const [importFileName, setImportFileName] = useState<string | null>(null);
 
   // 调试：组件挂载时打印日志
   console.log('🔵 PersonaList组件已加载');
@@ -111,10 +115,24 @@ export default function PersonaList() {
     }
   };
 
-  // 测试函数
-  const handleTestClick = () => {
-    console.log('🧪 测试按钮点击！');
-    alert('测试按钮工作正常！');
+  const handleImportPersona = async (file: File | null) => {
+    if (!file) return;
+    try {
+      setImporting(true);
+      setImportResult(null);
+      setImportFileName(file.name);
+      const content = await file.text();
+      const payload = JSON.parse(content);
+      const response = await personasApi.importPersona(payload, importMode);
+      const personaId = response?.data?.persona_id;
+      const version = response?.data?.version;
+      setImportResult(`导入成功：${personaId}（版本 ${version}）`);
+      await loadData();
+    } catch (err: any) {
+      setImportResult(`导入失败：${err.message || '未知错误'}`);
+    } finally {
+      setImporting(false);
+    }
   };
 
   useEffect(() => {
@@ -132,19 +150,43 @@ export default function PersonaList() {
             构建和管理作者Persona，共 {personas.length} 个
           </p>
         </div>
-        {/* 调试按钮 */}
-        <button
-          onClick={handleTestClick}
-          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
-        >
-          🧪 测试按钮
-        </button>
+        <div className="flex items-center gap-3">
+          <label className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+            <Upload className="h-4 w-4 mr-2" />
+            导入Persona
+            <input
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={(e) => handleImportPersona(e.target.files?.[0] || null)}
+              disabled={importing}
+            />
+          </label>
+          <select
+            value={importMode}
+            onChange={(e) => setImportMode(e.target.value as 'new' | 'new_version' | 'overwrite')}
+            className="rounded-md border border-gray-200 text-sm"
+          >
+            <option value="new_version">导入为新版本</option>
+            <option value="new">导入为新Persona</option>
+            <option value="overwrite">覆盖同ID</option>
+          </select>
+        </div>
       </div>
 
       {/* 错误提示 */}
       {error && (
         <div className="rounded-md bg-red-50 p-4">
           <p className="text-sm text-red-800">{error}</p>
+        </div>
+      )}
+
+      {importResult && (
+        <div className="rounded-md bg-blue-50 p-4 text-sm text-blue-700">
+          {importResult}
+          {importFileName && (
+            <span className="ml-2 text-xs text-blue-500">({importFileName})</span>
+          )}
         </div>
       )}
 
@@ -176,12 +218,15 @@ export default function PersonaList() {
                           <p className="text-sm font-medium text-gray-900">
                             {persona.author_name}
                           </p>
-                          <p className="text-xs text-gray-500">
-                            {persona.persona_id.slice(0, 8)}...
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                  <p className="text-xs text-gray-500">
+                    {persona.persona_id.slice(0, 8)}...
+                  </p>
+                  {persona.version && (
+                    <p className="text-xs text-gray-400">版本 {persona.version}</p>
+                  )}
+                </div>
+              </div>
+            </div>
 
                     <div className="space-y-1 mb-3">
                       <p className="text-xs text-gray-600">

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from loguru import logger
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import uuid
 
 from app.database import get_db
@@ -16,6 +16,52 @@ from app.services.evidence_linker import get_evidence_linker
 from app.services.persona_card import build_persona_card
 
 router = APIRouter()
+
+
+def _bump_version(version: Optional[str]) -> str:
+    if not version:
+        return "1.1"
+    parts = version.split(".")
+    if len(parts) == 1 and parts[0].isdigit():
+        return f"{parts[0]}.1"
+    if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
+        major = int(parts[0])
+        minor = int(parts[1]) + 1
+        return f"{major}.{minor}"
+    return f"{version}.1"
+
+
+def _build_persona_from_payload(payload: Dict[str, Any], persona_id: str, version: str) -> AuthorPersonaORM:
+    return AuthorPersonaORM(
+        persona_id=persona_id,
+        book_id=payload.get("book_id") or "",
+        author_name=payload.get("author_name") or "",
+        thinking_style=payload.get("thinking_style") or "analytical",
+        logic_pattern=payload.get("logic_pattern") or "",
+        reasoning_framework=payload.get("reasoning_framework") or "",
+        core_philosophy=payload.get("core_philosophy") or "",
+        theoretical_framework=payload.get("theoretical_framework") or "",
+        key_concepts=payload.get("key_concepts") or {},
+        narrative_style=payload.get("narrative_style") or "",
+        language_rhythm=payload.get("language_rhythm") or "",
+        sentence_structure=payload.get("sentence_structure") or "",
+        rhetorical_devices=payload.get("rhetorical_devices") or [],
+        value_orientation=payload.get("value_orientation") or "",
+        value_judgment_framework=payload.get("value_judgment_framework") or "",
+        core_positions=payload.get("core_positions") or [],
+        opposed_positions=payload.get("opposed_positions") or [],
+        tone=payload.get("tone") or "",
+        emotion_tendency=payload.get("emotion_tendency") or "",
+        expressiveness=payload.get("expressiveness") or "",
+        personality_traits=payload.get("personality_traits") or [],
+        communication_style=payload.get("communication_style") or "",
+        attitude_toward_audience=payload.get("attitude_toward_audience") or "",
+        system_prompt=payload.get("system_prompt"),
+        era=payload.get("era"),
+        identity=payload.get("identity"),
+        version=version,
+        evidence_links=payload.get("evidence_links") or []
+    )
 
 
 class CreatePersonaRequest(BaseModel):
@@ -35,6 +81,17 @@ class PersonaDiffRequest(BaseModel):
     """Persona对比请求"""
     source_id: str = Field(..., description="基准Persona ID")
     target_id: str = Field(..., description="对比Persona ID")
+
+
+class ImportPersonaRequest(BaseModel):
+    """导入Persona请求"""
+    mode: str = Field(default="new_version", description="导入模式: new/new_version/overwrite")
+    persona: Dict[str, Any] = Field(..., description="Persona JSON内容")
+
+
+class CreatePersonaVersionRequest(BaseModel):
+    """创建Persona新版本请求"""
+    version: Optional[str] = Field(default=None, description="指定版本号（可选）")
 
 
 @router.post("/", summary="创建Persona")
@@ -309,6 +366,138 @@ async def get_persona_card(persona_id: str, db: Session = Depends(get_db)):
         raise
     except Exception as e:
         logger.error(f"❌ Persona卡片生成失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/import", summary="导入Persona")
+async def import_persona(
+    request: ImportPersonaRequest,
+    db: Session = Depends(get_db)
+):
+    """导入Persona配置"""
+    try:
+        payload = request.persona or {}
+        if not payload.get("book_id"):
+            raise HTTPException(status_code=400, detail="book_id缺失")
+        if not payload.get("author_name"):
+            raise HTTPException(status_code=400, detail="author_name缺失")
+
+        book = db.query(BookORM).filter(BookORM.book_id == payload.get("book_id")).first()
+        if not book:
+            raise HTTPException(status_code=404, detail="关联著作不存在")
+
+        incoming_id = payload.get("persona_id")
+        incoming_version = payload.get("version") or "1.0"
+
+        if request.mode == "overwrite" and incoming_id:
+            existing = db.query(AuthorPersonaORM).filter(AuthorPersonaORM.persona_id == incoming_id).first()
+            if not existing:
+                raise HTTPException(status_code=404, detail="待覆盖Persona不存在")
+
+            version = incoming_version
+            updated = _build_persona_from_payload(payload, incoming_id, version)
+            for field in updated.__dict__:
+                if field.startswith("_"):
+                    continue
+                setattr(existing, field, getattr(updated, field))
+            db.commit()
+            return {
+                "code": 200,
+                "message": "覆盖导入成功",
+                "data": {
+                    "persona_id": existing.persona_id,
+                    "version": existing.version
+                }
+            }
+
+        new_persona_id = uuid.uuid4().hex
+        version = incoming_version
+        if request.mode == "new_version":
+            version = _bump_version(incoming_version)
+
+        db_persona = _build_persona_from_payload(payload, new_persona_id, version)
+        db.add(db_persona)
+        db.commit()
+        db.refresh(db_persona)
+
+        return {
+            "code": 200,
+            "message": "导入成功",
+            "data": {
+                "persona_id": db_persona.persona_id,
+                "version": db_persona.version
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ 导入Persona失败: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/{persona_id}/versions", summary="创建Persona新版本")
+async def create_persona_version(
+    persona_id: str,
+    request: CreatePersonaVersionRequest,
+    db: Session = Depends(get_db)
+):
+    """基于现有Persona创建新版本"""
+    try:
+        source = get_persona_by_id(db, persona_id)
+        if not source:
+            raise HTTPException(status_code=404, detail="Persona不存在")
+
+        new_id = uuid.uuid4().hex
+        version = request.version or _bump_version(source.version or "1.0")
+
+        payload = {
+            "book_id": source.book_id,
+            "author_name": source.author_name,
+            "thinking_style": source.thinking_style,
+            "logic_pattern": source.logic_pattern,
+            "reasoning_framework": source.reasoning_framework,
+            "core_philosophy": source.core_philosophy,
+            "theoretical_framework": source.theoretical_framework,
+            "key_concepts": source.key_concepts,
+            "narrative_style": source.narrative_style,
+            "language_rhythm": source.language_rhythm,
+            "sentence_structure": source.sentence_structure,
+            "rhetorical_devices": source.rhetorical_devices,
+            "value_orientation": source.value_orientation,
+            "value_judgment_framework": source.value_judgment_framework,
+            "core_positions": source.core_positions,
+            "opposed_positions": source.opposed_positions,
+            "tone": source.tone,
+            "emotion_tendency": source.emotion_tendency,
+            "expressiveness": source.expressiveness,
+            "personality_traits": source.personality_traits,
+            "communication_style": source.communication_style,
+            "attitude_toward_audience": source.attitude_toward_audience,
+            "system_prompt": source.system_prompt,
+            "era": source.era,
+            "identity": source.identity,
+            "evidence_links": source.evidence_links
+        }
+
+        db_persona = _build_persona_from_payload(payload, new_id, version)
+        db.add(db_persona)
+        db.commit()
+        db.refresh(db_persona)
+
+        return {
+            "code": 200,
+            "message": "新版本创建成功",
+            "data": {
+                "persona_id": db_persona.persona_id,
+                "version": db_persona.version
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ 创建Persona新版本失败: {e}")
+        db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
 

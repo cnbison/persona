@@ -25,6 +25,8 @@ export default function PersonaDetail() {
   const [diffResult, setDiffResult] = useState<PersonaDiffResult | null>(null);
   const [diffLoading, setDiffLoading] = useState(false);
   const [diffError, setDiffError] = useState<string | null>(null);
+  const [versioning, setVersioning] = useState(false);
+  const [versionResult, setVersionResult] = useState<string | null>(null);
 
   useEffect(() => {
     if (personaId) {
@@ -123,6 +125,25 @@ export default function PersonaDetail() {
       setCardError(err.message || '生成失败');
     } finally {
       setCardLoading(false);
+    }
+  };
+
+  const handleCreateVersion = async () => {
+    if (!personaId) return;
+    try {
+      setVersioning(true);
+      setVersionResult(null);
+      const response = await personasApi.createPersonaVersion(personaId);
+      const newId = response?.data?.persona_id;
+      const newVersion = response?.data?.version;
+      setVersionResult(`已创建新版本：${newId}（版本 ${newVersion}）`);
+      if (newId) {
+        navigate(`/personas/${newId}`);
+      }
+    } catch (err: any) {
+      setVersionResult(`创建失败：${err.message || '未知错误'}`);
+    } finally {
+      setVersioning(false);
     }
   };
 
@@ -270,6 +291,13 @@ export default function PersonaDetail() {
               {exporting ? '导出中...' : '导出JSON'}
             </button>
             <button
+              onClick={handleCreateVersion}
+              disabled={versioning}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            >
+              {versioning ? '创建中...' : '创建新版本'}
+            </button>
+            <button
               onClick={handleGeneratePrompt}
               disabled={generatingPrompt}
               className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md ${
@@ -306,6 +334,12 @@ export default function PersonaDetail() {
                 <p className="text-sm text-green-700 mt-1">后续生成对话脚本时会自动使用此提示词</p>
               </div>
             </div>
+          </div>
+        )}
+
+        {versionResult && (
+          <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-700">
+            {versionResult}
           </div>
         )}
 

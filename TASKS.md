@@ -48,7 +48,7 @@ Phase 6: 质量保障与发布准备
 - [x] System Prompt 生成与边界规则
 - [x] 原文锚定与推演标注
 - [x] Persona卡片生成（摘要+证据链接）
-- [ ] Persona配置导出/导入（JSON）
+- [x] Persona配置导出/导入（JSON）
 - [x] 版本管理与Diff对比
 
 **验收标准**
