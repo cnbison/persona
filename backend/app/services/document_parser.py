@@ -28,13 +28,20 @@ except ImportError:
     EBOOKLIB_AVAILABLE = False
     logger.warning("⚠️  ebooklib未安装，EPUB解析功能不可用")
 
+try:
+    import docx
+    DOCX_AVAILABLE = True
+except ImportError:
+    DOCX_AVAILABLE = False
+    logger.warning("⚠️  python-docx未安装，DOCX解析功能不可用")
+
 
 class DocumentParser:
     """
     文档解析服务
 
     功能：
-    - 解析PDF、EPUB、TXT格式
+    - 解析PDF、EPUB、TXT、DOCX格式
     - 识别章节结构
     - 提取核心观点
     - 结构化存储
@@ -80,6 +87,8 @@ class DocumentParser:
             text = await self._parse_epub(file_path)
         elif file_ext == 'txt':
             text = await self._parse_txt(file_path)
+        elif file_ext == 'docx':
+            text = await self._parse_docx(file_path)
         else:
             raise ValueError(f"不支持的文件格式: {file_ext}")
 
@@ -180,6 +189,23 @@ class DocumentParser:
             raise
 
         return text
+
+    async def _parse_docx(self, file_path: str) -> str:
+        """解析DOCX文件"""
+        if not DOCX_AVAILABLE:
+            raise ImportError("python-docx未安装，无法解析DOCX文件")
+
+        try:
+            doc = docx.Document(file_path)
+            paragraphs = []
+            for paragraph in doc.paragraphs:
+                content = paragraph.text.strip()
+                if content:
+                    paragraphs.append(content)
+            return "\n\n".join(paragraphs)
+        except Exception as e:
+            logger.error(f"❌ DOCX解析失败: {e}")
+            raise
 
     def _identify_chapters(self, text: str, file_type: str) -> List[Chapter]:
         """
