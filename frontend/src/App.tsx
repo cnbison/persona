@@ -15,6 +15,7 @@ import OutputGenerate from './pages/outputs/OutputGenerate';
 import OutputDetail from './pages/outputs/OutputDetail';
 import DiffView from './pages/outputs/DiffView';
 import HeatmapView from './pages/outputs/HeatmapView';
+import EvidenceSearch from './pages/evidence/EvidenceSearch';
 import ScriptGenerator from './pages/scripts/ScriptGenerator';
 import ScriptViewer from './pages/scripts/ScriptViewer';
 import Settings from './pages/Settings';
@@ -39,6 +40,7 @@ function App() {
           <Route path="outputs/diff" element={<DiffView />} />
           <Route path="outputs/heatmap" element={<HeatmapView />} />
           <Route path="outputs/:artifactId" element={<OutputDetail />} />
+          <Route path="evidence" element={<EvidenceSearch />} />
           <Route path="scripts" element={<ScriptGenerator />} />
           <Route path="scripts/:scriptId" element={<ScriptViewer />} />
           <Route path="settings" element={<Settings />} />

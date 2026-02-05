@@ -6,6 +6,7 @@ import {
   User,
   Users,
   FileText,
+  Search,
   Mic,
   Settings,
   Menu,
@@ -24,6 +25,7 @@ const navigation = [
   { name: '受众Persona', href: '/audiences', icon: Users },
   { name: '提纲编辑', href: '/outlines', icon: FileText },
   { name: '输出与诊断', href: '/outputs', icon: FileText },
+  { name: '证据检索', href: '/evidence', icon: Search },
   { name: '脚本生成', href: '/scripts', icon: Mic },
   { name: '设置', href: '/settings', icon: Settings },
 ];
