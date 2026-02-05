@@ -127,6 +127,8 @@ class AuthorPersonaORM(Base):
     # 元数据
     era = Column(String, nullable=True)
     identity = Column(String, nullable=True)
+    version = Column(String, default="1.0")
+    evidence_links = Column(JSON, default=list)
     created_at = Column(DateTime, default=datetime.now)
 
     # 关联关系

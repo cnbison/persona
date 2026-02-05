@@ -251,7 +251,9 @@ async def get_persona(persona_id: str, db: Session = Depends(get_db)):
             "personality_traits": db_persona.personality_traits or [],
             "communication_style": db_persona.communication_style or "",
             "attitude_toward_audience": db_persona.attitude_toward_audience or "",
-            "system_prompt": db_persona.system_prompt
+            "system_prompt": db_persona.system_prompt,
+            "version": db_persona.version or "1.0",
+            "evidence_links": db_persona.evidence_links or []
         }
 
         return {
@@ -346,4 +348,56 @@ async def generate_system_prompt(persona_id: str, db: Session = Depends(get_db))
         raise
     except Exception as e:
         logger.error(f"❌ 生成System Prompt失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{persona_id}/export", summary="导出Persona JSON")
+async def export_persona(persona_id: str, db: Session = Depends(get_db)):
+    """
+    导出Persona配置（JSON）
+    """
+    try:
+        db_persona = get_persona_by_id(db, persona_id)
+        if not db_persona:
+            raise HTTPException(status_code=404, detail="Persona不存在")
+
+        export_data = {
+            "persona_id": db_persona.persona_id,
+            "book_id": db_persona.book_id,
+            "author_name": db_persona.author_name or "",
+            "thinking_style": db_persona.thinking_style or "analytical",
+            "logic_pattern": db_persona.logic_pattern or "",
+            "reasoning_framework": db_persona.reasoning_framework or "",
+            "core_philosophy": db_persona.core_philosophy or "",
+            "theoretical_framework": db_persona.theoretical_framework or "",
+            "key_concepts": db_persona.key_concepts or {},
+            "narrative_style": db_persona.narrative_style or "",
+            "language_rhythm": db_persona.language_rhythm or "",
+            "sentence_structure": db_persona.sentence_structure or "",
+            "rhetorical_devices": db_persona.rhetorical_devices or [],
+            "value_orientation": db_persona.value_orientation or "",
+            "value_judgment_framework": db_persona.value_judgment_framework or "",
+            "core_positions": db_persona.core_positions or [],
+            "opposed_positions": db_persona.opposed_positions or [],
+            "tone": db_persona.tone or "",
+            "emotion_tendency": db_persona.emotion_tendency or "",
+            "expressiveness": db_persona.expressiveness or "",
+            "personality_traits": db_persona.personality_traits or [],
+            "communication_style": db_persona.communication_style or "",
+            "attitude_toward_audience": db_persona.attitude_toward_audience or "",
+            "system_prompt": db_persona.system_prompt,
+            "version": db_persona.version or "1.0",
+            "evidence_links": db_persona.evidence_links or []
+        }
+
+        return {
+            "code": 200,
+            "message": "导出成功",
+            "data": export_data
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ 导出Persona失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))

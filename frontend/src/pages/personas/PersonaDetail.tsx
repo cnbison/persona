@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Brain, BookOpen, MessageSquare, Heart, Sparkles } from 'lucide-react';
 import { personasApi } from '../../services/personas';
+import { personaExportApi } from '../../services/personaExport';
 import type { AuthorPersona } from '../../types/persona';
 
 export default function PersonaDetail() {
@@ -15,6 +16,7 @@ export default function PersonaDetail() {
   const [systemPrompt, setSystemPrompt] = useState<string | null>(null);
   const [generatingPrompt, setGeneratingPrompt] = useState(false);
   const [promptSuccess, setPromptSuccess] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (personaId) {
@@ -61,6 +63,26 @@ export default function PersonaDetail() {
       console.error('生成System Prompt失败:', err);
       setGeneratingPrompt(false);
       alert(`生成失败: ${err.message || '未知错误'}`);
+    }
+  };
+
+  const handleExport = async () => {
+    if (!personaId) return;
+    try {
+      setExporting(true);
+      const response = await personaExportApi.exportPersona(personaId);
+      const payload = response.data;
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `persona-${personaId}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert(`导出失败: ${err.message || '未知错误'}`);
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -175,33 +197,42 @@ export default function PersonaDetail() {
               </p>
             </div>
           </div>
-          <button
-            onClick={handleGeneratePrompt}
-            disabled={generatingPrompt || promptSuccess}
-            className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md ${
-              generatingPrompt
-                ? 'bg-gray-400 cursor-not-allowed'
-                : promptSuccess
-                ? 'bg-green-600 hover:bg-green-700'
-                : 'text-white bg-blue-600 hover:bg-blue-700'
-            }`}
-          >
-            {generatingPrompt ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                生成中...
-              </>
-            ) : promptSuccess ? (
-              <>
-                <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                已生成并保存
-              </>
-            ) : (
-              <>生成System Prompt</>
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+            >
+              {exporting ? '导出中...' : '导出JSON'}
+            </button>
+            <button
+              onClick={handleGeneratePrompt}
+              disabled={generatingPrompt || promptSuccess}
+              className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md ${
+                generatingPrompt
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : promptSuccess
+                  ? 'bg-green-600 hover:bg-green-700'
+                  : 'text-white bg-blue-600 hover:bg-blue-700'
+              }`}
+            >
+              {generatingPrompt ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  生成中...
+                </>
+              ) : promptSuccess ? (
+                <>
+                  <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  已生成并保存
+                </>
+              ) : (
+                <>生成System Prompt</>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* 成功提示 */}
@@ -241,7 +272,7 @@ export default function PersonaDetail() {
             <p className="text-sm text-gray-500 mt-1">用于快速校准与复用</p>
           </div>
           <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
-            版本 v1.0
+            版本 {persona.version || '1.0'}
           </span>
         </div>
 
@@ -292,7 +323,11 @@ export default function PersonaDetail() {
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-1">证据链接</p>
-              <p className="text-sm text-gray-900">暂无（待接入证据库）</p>
+              <p className="text-sm text-gray-900">
+                {(persona.evidence_links || []).length > 0
+                  ? persona.evidence_links.join('、')
+                  : '暂无（待接入证据库）'}
+              </p>
             </div>
           </div>
         </div>

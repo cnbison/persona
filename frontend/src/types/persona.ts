@@ -45,5 +45,7 @@ export interface AuthorPersona {
   // 元数据
   era?: string;
   identity?: string;
+  version?: string;
+  evidence_links?: string[];
   created_at?: string;
 }

@@ -74,6 +74,9 @@ class AuthorPersona(BaseModel):
         }
     )
 
+    # 证据链接（可选）
+    evidence_links: List[str] = Field(default_factory=list, description="证据链接或引用")
+
     # 元数据
     created_at: datetime = Field(default_factory=datetime.now)
     version: str = "1.0"
