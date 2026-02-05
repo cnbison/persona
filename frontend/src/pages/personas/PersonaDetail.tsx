@@ -71,8 +71,11 @@ export default function PersonaDetail() {
     try {
       setGeneratingPrompt(true);
       setPromptSuccess(false);
+      const shouldForce = promptSuccess
+        ? window.confirm('已存在System Prompt，是否重新生成并覆盖？')
+        : false;
 
-      const response = await personasApi.generateSystemPrompt(personaId);
+      const response = await personasApi.generateSystemPrompt(personaId, shouldForce);
       setSystemPrompt(response.data.system_prompt);
       setPromptSuccess(true);
 
@@ -268,7 +271,7 @@ export default function PersonaDetail() {
             </button>
             <button
               onClick={handleGeneratePrompt}
-              disabled={generatingPrompt || promptSuccess}
+              disabled={generatingPrompt}
               className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md ${
                 generatingPrompt
                   ? 'bg-gray-400 cursor-not-allowed'
@@ -283,12 +286,7 @@ export default function PersonaDetail() {
                   生成中...
                 </>
               ) : promptSuccess ? (
-                <>
-                  <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  已生成并保存
-                </>
+                <>重新生成并覆盖</>
               ) : (
                 <>生成System Prompt</>
               )}

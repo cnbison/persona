@@ -45,8 +45,8 @@ Phase 6: 质量保障与发布准备
 ## Phase 2: 说者Persona构建与资产化（P0）
 
 - [x] Persona画像构建（默认六维度，可扩展）
-- [ ] System Prompt 生成与边界规则
-- [ ] 原文锚定与推演标注
+- [x] System Prompt 生成与边界规则
+- [x] 原文锚定与推演标注
 - [x] Persona卡片生成（摘要+证据链接）
 - [ ] Persona配置导出/导入（JSON）
 - [x] 版本管理与Diff对比

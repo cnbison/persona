@@ -377,7 +377,11 @@ async def diff_persona(
 
 
 @router.post("/{persona_id}/generate-prompt", summary="生成System Prompt")
-async def generate_system_prompt(persona_id: str, db: Session = Depends(get_db)):
+async def generate_system_prompt(
+    persona_id: str,
+    force: bool = False,
+    db: Session = Depends(get_db)
+):
     """
     为Persona生成System Prompt
 
@@ -390,8 +394,8 @@ async def generate_system_prompt(persona_id: str, db: Session = Depends(get_db))
         if not db_persona:
             raise HTTPException(status_code=404, detail="Persona不存在")
 
-        # 如果已有system_prompt，直接返回
-        if db_persona.system_prompt:
+        # 如果已有system_prompt，且不强制刷新，直接返回
+        if db_persona.system_prompt and not force:
             return {
                 "code": 200,
                 "message": "System Prompt已存在",
@@ -428,7 +432,13 @@ async def generate_system_prompt(persona_id: str, db: Session = Depends(get_db))
             expressiveness=db_persona.expressiveness or "",
             personality_traits=db_persona.personality_traits or [],
             communication_style=db_persona.communication_style or "",
-            attitude_toward_audience=db_persona.attitude_toward_audience or ""
+            attitude_toward_audience=db_persona.attitude_toward_audience or "",
+            viewpoint_boundaries={
+                "core_positions": db_persona.core_positions or [],
+                "opposed_positions": db_persona.opposed_positions or [],
+                "unmentioned_areas": []
+            },
+            evidence_links=db_persona.evidence_links or []
         )
 
         system_prompt = await persona_builder.generate_system_prompt(

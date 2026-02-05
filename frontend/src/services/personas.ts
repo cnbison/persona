@@ -40,9 +40,10 @@ export const personasApi = {
   },
 
   // 生成System Prompt
-  generateSystemPrompt: async (personaId: string) => {
+  generateSystemPrompt: async (personaId: string, force: boolean = false) => {
+    const query = force ? '?force=true' : '';
     return apiClient.post<any, GeneratePromptResponse>(
-      `/personas/${personaId}/generate-prompt`
+      `/personas/${personaId}/generate-prompt${query}`
     );
   },
 

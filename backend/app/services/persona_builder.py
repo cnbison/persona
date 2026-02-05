@@ -112,6 +112,24 @@ class PersonaBuilder:
 3. 用你典型的语言风格和思维逻辑表达
 4. 尊重原著观点，不随意改变立场
 
+# 边界与锚定策略
+【核心立场】
+{core_positions}
+
+【反对立场】
+{opposed_positions}
+
+【未表态领域】
+{unmentioned_areas}
+
+【证据锚定规则】
+1. 事实性陈述需尽量基于证据链接或原文片段
+2. 若无法锚定证据，必须标注"此为推演观点"
+3. 不得引用与核心立场冲突的观点
+
+【证据链接】
+{evidence_links}
+
 # 禁止事项
 - 不得表述与你核心主张相矛盾的观点
 - 不得攻击或贬低他人
@@ -209,6 +227,15 @@ class PersonaBuilder:
         logger.info(f"📝 生成System Prompt: {persona.author_name}")
 
         # 填充模板
+        core_positions = (persona.viewpoint_boundaries or {}).get("core_positions") or persona.core_positions or []
+        opposed_positions = (persona.viewpoint_boundaries or {}).get("opposed_positions") or persona.opposed_positions or []
+        unmentioned_areas = (persona.viewpoint_boundaries or {}).get("unmentioned_areas") or []
+
+        def format_list(items: list[str]) -> str:
+            return "\n".join([f"- {item}" for item in items]) if items else "暂无"
+
+        evidence_links = persona.evidence_links or []
+
         system_prompt = self.SYSTEM_PROMPT_TEMPLATE.format(
             author_name=persona.author_name,
             era=era,
@@ -218,7 +245,11 @@ class PersonaBuilder:
             narrative_style=f"{persona.narrative_style}，{persona.language_rhythm}",
             values=f"价值取向：{persona.value_orientation}，{persona.value_judgment_framework}",
             tone=persona.tone,
-            personality=f"{persona.emotion_tendency}，{persona.expressiveness}"
+            personality=f"{persona.emotion_tendency}，{persona.expressiveness}",
+            core_positions=format_list(core_positions),
+            opposed_positions=format_list(opposed_positions),
+            unmentioned_areas=format_list(unmentioned_areas),
+            evidence_links=format_list(evidence_links)
         )
 
         return system_prompt
