@@ -7,7 +7,7 @@ from typing import Optional
 from loguru import logger
 
 from app.database import get_db
-from app.models.orm import EvidenceORM, ParagraphORM
+from app.models.orm import EvidenceORM, ParagraphORM, ChapterORM
 from app.services.evidence_builder import get_evidence_builder
 
 router = APIRouter()
@@ -33,6 +33,7 @@ async def search_evidence(
     keyword: Optional[str] = None,
     book_id: Optional[str] = None,
     chapter_id: Optional[str] = None,
+    viewpoint_id: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     try:
@@ -41,10 +42,22 @@ async def search_evidence(
             query = query.filter(EvidenceORM.book_id == book_id)
         if chapter_id:
             query = query.filter(EvidenceORM.chapter_id == chapter_id)
+        if viewpoint_id:
+            query = query.filter(EvidenceORM.viewpoint_id == viewpoint_id)
         if keyword:
             query = query.filter(EvidenceORM.evidence_text.contains(keyword))
 
         evidences = query.limit(50).all()
+        chapter_map = {}
+        paragraph_map = {}
+        for e in evidences:
+            if e.chapter_id and e.chapter_id not in chapter_map:
+                chapter = db.query(ChapterORM).filter(ChapterORM.chapter_id == e.chapter_id).first()
+                chapter_map[e.chapter_id] = chapter.title if chapter else None
+            if e.paragraph_id and e.paragraph_id not in paragraph_map:
+                paragraph = db.query(ParagraphORM).filter(ParagraphORM.paragraph_id == e.paragraph_id).first()
+                paragraph_map[e.paragraph_id] = paragraph.paragraph_number if paragraph else None
+
         return {
             "code": 200,
             "message": "获取成功",
@@ -54,7 +67,9 @@ async def search_evidence(
                         "evidence_id": e.evidence_id,
                         "book_id": e.book_id,
                         "chapter_id": e.chapter_id,
+                        "chapter_title": chapter_map.get(e.chapter_id),
                         "paragraph_id": e.paragraph_id,
+                        "paragraph_number": paragraph_map.get(e.paragraph_id),
                         "viewpoint_id": e.viewpoint_id,
                         "evidence_text": e.evidence_text,
                         "context_before": e.context_before,

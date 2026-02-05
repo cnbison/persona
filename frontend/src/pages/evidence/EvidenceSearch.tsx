@@ -7,7 +7,9 @@ interface EvidenceItem {
   evidence_id: string;
   book_id: string;
   chapter_id: string;
+  chapter_title?: string | null;
   paragraph_id?: string | null;
+  paragraph_number?: number | null;
   viewpoint_id?: string | null;
   evidence_text: string;
   context_before?: string | null;
@@ -20,6 +22,7 @@ export default function EvidenceSearch() {
   const [keyword, setKeyword] = useState('');
   const [bookId, setBookId] = useState('');
   const [chapterId, setChapterId] = useState('');
+  const [viewpointId, setViewpointId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<EvidenceItem[]>([]);
@@ -32,6 +35,7 @@ export default function EvidenceSearch() {
         keyword: keyword || undefined,
         book_id: bookId || undefined,
         chapter_id: chapterId || undefined,
+        viewpoint_id: viewpointId || undefined,
       });
       setResults(response?.data?.items || []);
     } catch (err: any) {
@@ -55,7 +59,7 @@ export default function EvidenceSearch() {
       )}
 
       <div className="bg-white shadow rounded-lg border border-gray-200 p-6 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <label className="text-sm text-gray-600">
             关键词
             <input
@@ -77,6 +81,14 @@ export default function EvidenceSearch() {
             <input
               value={chapterId}
               onChange={(e) => setChapterId(e.target.value)}
+              className="mt-1 w-full rounded-md border-gray-200 text-sm"
+            />
+          </label>
+          <label className="text-sm text-gray-600">
+            观点ID
+            <input
+              value={viewpointId}
+              onChange={(e) => setViewpointId(e.target.value)}
               className="mt-1 w-full rounded-md border-gray-200 text-sm"
             />
           </label>
@@ -105,8 +117,12 @@ export default function EvidenceSearch() {
                 <div className="flex items-center justify-between text-xs text-gray-500">
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-4 h-4" />
-                    <span>章节ID: {item.chapter_id}</span>
-                    {item.paragraph_id && <span>段落ID: {item.paragraph_id}</span>}
+                    <span>
+                      {item.chapter_title ? item.chapter_title : '章节'} ({item.chapter_id})
+                    </span>
+                    {item.paragraph_number && (
+                      <span>段落 #{item.paragraph_number}</span>
+                    )}
                   </div>
                   <span>Score: {item.score ?? 1.0}</span>
                 </div>
