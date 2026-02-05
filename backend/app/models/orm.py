@@ -293,3 +293,21 @@ class DiagnosticReportORM(Base):
     speaker_persona = relationship("AuthorPersonaORM", back_populates="diagnostics")
     audience_persona = relationship("AudiencePersonaORM", back_populates="diagnostics")
     artifact = relationship("OutputArtifactORM", back_populates="diagnostics")
+
+
+class ModelProviderORM(Base):
+    """模型提供方配置表"""
+    __tablename__ = "model_providers"
+
+    provider_id = Column(String, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    provider_type = Column(String, nullable=False)  # openai/azure/anthropic/deepseek/qwen/ollama/custom
+    base_url = Column(String, nullable=True)
+    api_key = Column(String, nullable=True)
+    api_version = Column(String, nullable=True)
+    model = Column(String, nullable=False)
+    extra_headers = Column(JSON, default=dict)
+    is_active = Column(Integer, default=0)
+
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)

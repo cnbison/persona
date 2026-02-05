@@ -10,7 +10,11 @@ import {
   Sun,
   Info,
   Save,
+  Cpu,
+  Check,
 } from 'lucide-react';
+import { modelProvidersApi } from '../services/modelProviders';
+import type { ModelProvider, ProviderType } from '../types/provider';
 
 interface AppSettings {
   apiBaseUrl: string;
@@ -28,9 +32,32 @@ const DEFAULT_SETTINGS: AppSettings = {
   logLevel: 'info',
 };
 
+const PROVIDER_OPTIONS: Array<{ value: ProviderType; label: string }> = [
+  { value: 'openai', label: 'OpenAI' },
+  { value: 'azure', label: 'Azure OpenAI' },
+  { value: 'anthropic', label: 'Anthropic' },
+  { value: 'deepseek', label: 'DeepSeek' },
+  { value: 'qwen', label: 'Qwen' },
+  { value: 'ollama', label: 'Ollama' },
+  { value: 'custom', label: '自定义BaseURL' },
+];
+
 export default function Settings() {
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
   const [saving, setSaving] = useState(false);
+  const [providers, setProviders] = useState<ModelProvider[]>([]);
+  const [providerLoading, setProviderLoading] = useState(false);
+  const [providerError, setProviderError] = useState<string | null>(null);
+  const [providerForm, setProviderForm] = useState({
+    name: '',
+    provider_type: 'openai' as ProviderType,
+    base_url: '',
+    api_key: '',
+    api_version: '',
+    model: '',
+    extra_headers: '',
+    is_active: true,
+  });
 
   // 从localStorage加载设置
   useEffect(() => {
@@ -44,6 +71,24 @@ export default function Settings() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    loadProviders();
+  }, []);
+
+  const loadProviders = async () => {
+    try {
+      setProviderLoading(true);
+      setProviderError(null);
+      const response = await modelProvidersApi.listProviders();
+      const items = response?.data?.items || [];
+      setProviders(items);
+    } catch (err: any) {
+      setProviderError(err.message || '加载模型配置失败');
+    } finally {
+      setProviderLoading(false);
+    }
+  };
 
   // 保存设置
   const handleSave = async () => {
@@ -163,6 +208,166 @@ export default function Settings() {
                   用于AI对话生成（可选）
                 </p>
               </div>
+            </div>
+          </div>
+
+          {/* 模型提供方配置 */}
+          <div className="rounded-lg bg-white p-6 shadow border border-gray-200">
+            <div className="flex items-center mb-4">
+              <Cpu className="w-5 h-5 text-gray-400 mr-2" />
+              <h2 className="text-lg font-semibold text-gray-900">模型提供方</h2>
+            </div>
+
+            {providerError && (
+              <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-800">
+                {providerError}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input
+                  value={providerForm.name}
+                  onChange={(e) => setProviderForm({ ...providerForm, name: e.target.value })}
+                  placeholder="名称（如 OpenAI-主账号）"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                />
+                <select
+                  value={providerForm.provider_type}
+                  onChange={(e) => setProviderForm({ ...providerForm, provider_type: e.target.value as ProviderType })}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                >
+                  {PROVIDER_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  value={providerForm.base_url}
+                  onChange={(e) => setProviderForm({ ...providerForm, base_url: e.target.value })}
+                  placeholder="Base URL（可选）"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                />
+                <input
+                  value={providerForm.api_key}
+                  onChange={(e) => setProviderForm({ ...providerForm, api_key: e.target.value })}
+                  placeholder="API Key"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                />
+                <input
+                  value={providerForm.api_version}
+                  onChange={(e) => setProviderForm({ ...providerForm, api_version: e.target.value })}
+                  placeholder="API Version（如 Azure/Anthropic）"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                />
+                <input
+                  value={providerForm.model}
+                  onChange={(e) => setProviderForm({ ...providerForm, model: e.target.value })}
+                  placeholder="模型名或部署名"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                />
+                <input
+                  value={providerForm.extra_headers}
+                  onChange={(e) => setProviderForm({ ...providerForm, extra_headers: e.target.value })}
+                  placeholder="额外Header(JSON，可选)"
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <label className="flex items-center text-sm text-gray-600">
+                  <input
+                    type="checkbox"
+                    checked={providerForm.is_active}
+                    onChange={(e) => setProviderForm({ ...providerForm, is_active: e.target.checked })}
+                    className="mr-2"
+                  />
+                  设为激活模型
+                </label>
+                <button
+                  onClick={async () => {
+                    try {
+                      const headers = providerForm.extra_headers
+                        ? JSON.parse(providerForm.extra_headers)
+                        : {};
+                      await modelProvidersApi.createProvider({
+                        name: providerForm.name,
+                        provider_type: providerForm.provider_type,
+                        base_url: providerForm.base_url || undefined,
+                        api_key: providerForm.api_key || undefined,
+                        api_version: providerForm.api_version || undefined,
+                        model: providerForm.model,
+                        extra_headers: headers,
+                        is_active: providerForm.is_active,
+                      });
+                      setProviderForm({
+                        name: '',
+                        provider_type: 'openai',
+                        base_url: '',
+                        api_key: '',
+                        api_version: '',
+                        model: '',
+                        extra_headers: '',
+                        is_active: true,
+                      });
+                      await loadProviders();
+                    } catch (err: any) {
+                      setProviderError(err.message || '创建失败');
+                    }
+                  }}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                >
+                  新增模型
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-3">
+              {providerLoading ? (
+                <div className="text-sm text-gray-500">加载中...</div>
+              ) : (
+                providers.map((provider) => (
+                  <div
+                    key={provider.provider_id}
+                    className="flex flex-col md:flex-row md:items-center md:justify-between border border-gray-200 rounded-md p-3"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-900">{provider.name}</span>
+                        {provider.is_active && (
+                          <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs text-green-700">
+                            <Check className="w-3 h-3 mr-1" /> 已激活
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {provider.provider_type} · {provider.model}
+                      </div>
+                    </div>
+                    <div className="mt-2 md:mt-0 flex items-center gap-2">
+                      <button
+                        onClick={async () => {
+                          await modelProvidersApi.updateProvider(provider.provider_id, { is_active: true });
+                          await loadProviders();
+                        }}
+                        className="px-3 py-1 text-xs rounded-md border border-gray-200 text-gray-700 hover:bg-gray-50"
+                      >
+                        设为激活
+                      </button>
+                      <button
+                        onClick={async () => {
+                          await modelProvidersApi.deleteProvider(provider.provider_id);
+                          await loadProviders();
+                        }}
+                        className="px-3 py-1 text-xs rounded-md border border-red-200 text-red-600 hover:bg-red-50"
+                      >
+                        删除
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 

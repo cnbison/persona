@@ -5,6 +5,7 @@ OpenAI客户端封装
 import asyncio
 import time
 from typing import Optional, Dict, Any, AsyncIterator
+import httpx
 from enum import Enum
 from loguru import logger
 import json
@@ -49,37 +50,12 @@ class OpenAIClient:
 
     def __init__(self):
         """初始化客户端"""
-        if not OPENAI_AVAILABLE:
-            logger.warning("⚠️  OpenAI未安装，使用mock模式")
-            self.client = None
-            self.async_client = None
-            self.mock_mode = True
-            return
-
-        try:
-            # 检查API密钥是否配置
-            if settings.openai_api_key == "sk-test-key":
-                logger.warning("⚠️  使用测试API密钥，实际调用会失败")
-                self.mock_mode = True
-            else:
-                self.mock_mode = False
-
-            self.client = OpenAI(
-                api_key=settings.openai_api_key,
-                base_url=settings.openai_api_base
-            )
-            self.async_client = AsyncOpenAI(
-                api_key=settings.openai_api_key,
-                base_url=settings.openai_api_base
-            )
-
-            logger.info(f"✅ OpenAI客户端初始化成功 (模型: {settings.openai_model})")
-
-        except Exception as e:
-            logger.error(f"❌ OpenAI客户端初始化失败: {e}")
-            self.mock_mode = True
-            self.client = None
-            self.async_client = None
+        self.client = None
+        self.async_client = None
+        self.mock_mode = True
+        self.active_provider_id = None
+        self.active_provider = None
+        self._init_from_provider()
 
     async def chat_completion(
         self,
@@ -110,36 +86,53 @@ class OpenAIClient:
                 "cost": 0.0007
             }
         """
+        self._init_from_provider()
+
         if self.mock_mode:
             return self._mock_response(messages)
 
-        model = model or settings.openai_model
+        provider_type = (self.active_provider or {}).get("provider_type", "openai")
+        model = model or (self.active_provider or {}).get("model") or settings.openai_model
         temperature = temperature or settings.openai_temperature
 
         for attempt in range(max_retries):
             try:
                 logger.debug(f"🔄 调用OpenAI API (尝试 {attempt + 1}/{max_retries})")
 
-                response = await self.async_client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens,
-                    stream=stream
-                )
+                if provider_type in ("openai", "deepseek", "qwen", "ollama", "custom"):
+                    response = await self.async_client.chat.completions.create(
+                        model=model,
+                        messages=messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens,
+                        stream=stream
+                    )
 
-                # 提取响应内容
-                if stream:
-                    # 流式响应需要特殊处理
-                    content = ""
-                    async for chunk in response:
-                        if chunk.choices[0].delta.content:
-                            content += chunk.choices[0].delta.content
-                    completion_text = content
-                    usage = None  # 流式响应不返回usage
+                    if stream:
+                        content = ""
+                        async for chunk in response:
+                            if chunk.choices[0].delta.content:
+                                content += chunk.choices[0].delta.content
+                        completion_text = content
+                        usage = None
+                    else:
+                        completion_text = response.choices[0].message.content
+                        usage = response.usage
+                elif provider_type == "azure":
+                    completion_text, usage = await self._call_azure_chat(
+                        messages=messages,
+                        model=model,
+                        temperature=temperature,
+                        max_tokens=max_tokens
+                    )
+                elif provider_type == "anthropic":
+                    completion_text, usage = await self._call_anthropic(
+                        messages=messages,
+                        model=model,
+                        max_tokens=max_tokens
+                    )
                 else:
-                    completion_text = response.choices[0].message.content
-                    usage = response.usage
+                    raise RuntimeError(f"不支持的模型提供方: {provider_type}")
 
                 # 计算成本
                 cost = self._calculate_cost(model, usage) if usage else 0.0
@@ -189,26 +182,41 @@ class OpenAIClient:
 
         参数和返回值与异步版本相同
         """
+        self._init_from_provider()
+
         if self.mock_mode:
             return self._mock_response(messages)
 
-        model = model or settings.openai_model
+        provider_type = (self.active_provider or {}).get("provider_type", "openai")
+        model = model or (self.active_provider or {}).get("model") or settings.openai_model
         temperature = temperature or settings.openai_temperature
 
         for attempt in range(max_retries):
             try:
                 logger.debug(f"🔄 调用OpenAI API (尝试 {attempt + 1}/{max_retries})")
 
-                response = self.client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    temperature=temperature,
-                    max_tokens=max_tokens
-                )
+                if provider_type in ("openai", "deepseek", "qwen", "ollama", "custom"):
+                    response = self.client.chat.completions.create(
+                        model=model,
+                        messages=messages,
+                        temperature=temperature,
+                        max_tokens=max_tokens
+                    )
 
-                completion_text = response.choices[0].message.content
-                usage = response.usage
-                cost = self._calculate_cost(model, usage)
+                    completion_text = response.choices[0].message.content
+                    usage = response.usage
+                elif provider_type == "azure":
+                    completion_text, usage = asyncio.run(
+                        self._call_azure_chat(messages, model, temperature, max_tokens)
+                    )
+                elif provider_type == "anthropic":
+                    completion_text, usage = asyncio.run(
+                        self._call_anthropic(messages, model, max_tokens)
+                    )
+                else:
+                    raise RuntimeError(f"不支持的模型提供方: {provider_type}")
+
+                cost = self._calculate_cost(model, usage) if usage else 0.0
 
                 logger.info(
                     f"✅ OpenAI调用成功 | "
@@ -220,10 +228,10 @@ class OpenAIClient:
                 return {
                     "content": completion_text,
                     "usage": {
-                        "prompt_tokens": usage.prompt_tokens,
-                        "completion_tokens": usage.completion_tokens,
-                        "total_tokens": usage.total_tokens
-                    },
+                        "prompt_tokens": usage.prompt_tokens if usage else 0,
+                        "completion_tokens": usage.completion_tokens if usage else 0,
+                        "total_tokens": usage.total_tokens if usage else 0
+                    } if usage else None,
                     "model": model,
                     "cost": cost
                 }
@@ -248,6 +256,140 @@ class OpenAIClient:
         output_cost = (usage.completion_tokens / 1000) * pricing["output"]
 
         return input_cost + output_cost
+
+    def _init_from_provider(self):
+        if not OPENAI_AVAILABLE:
+            self.mock_mode = True
+            return
+
+        provider = self._load_active_provider()
+        if not provider:
+            if settings.openai_api_key == "sk-test-key":
+                self.mock_mode = True
+                return
+            provider = {
+                "provider_id": None,
+                "provider_type": "openai",
+                "api_key": settings.openai_api_key,
+                "base_url": settings.openai_api_base,
+                "model": settings.openai_model,
+            }
+
+        if provider.get("provider_id") == self.active_provider_id:
+            return
+
+        self.active_provider_id = provider.get("provider_id")
+        self.active_provider = provider
+
+        api_key = provider.get("api_key") or ""
+        base_url = provider.get("base_url") or settings.openai_api_base
+
+        if not api_key or api_key == "sk-test-key":
+            self.mock_mode = True
+            self.client = None
+            self.async_client = None
+            return
+
+        try:
+            self.client = OpenAI(api_key=api_key, base_url=base_url)
+            self.async_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+            self.mock_mode = False
+            logger.info(f"✅ 模型提供方加载成功: {provider.get('name', provider.get('provider_type'))}")
+        except Exception as e:
+            logger.error(f"❌ 模型提供方初始化失败: {e}")
+            self.mock_mode = True
+            self.client = None
+            self.async_client = None
+
+    def _load_active_provider(self) -> Optional[Dict[str, Any]]:
+        try:
+            from app.database import SessionLocal
+            from app.models.orm import ModelProviderORM
+
+            db = SessionLocal()
+            provider = db.query(ModelProviderORM).filter(ModelProviderORM.is_active == 1).first()
+            db.close()
+
+            if not provider:
+                return None
+
+            return {
+                "provider_id": provider.provider_id,
+                "name": provider.name,
+                "provider_type": provider.provider_type,
+                "base_url": provider.base_url,
+                "api_key": provider.api_key,
+                "api_version": provider.api_version,
+                "model": provider.model,
+                "extra_headers": provider.extra_headers or {}
+            }
+        except Exception as e:
+            logger.error(f"❌ 加载模型提供方失败: {e}")
+            return None
+
+    async def _call_azure_chat(self, messages, model, temperature, max_tokens):
+        provider = self.active_provider or {}
+        base_url = provider.get("base_url") or ""
+        api_key = provider.get("api_key") or ""
+        api_version = provider.get("api_version") or "2024-02-15-preview"
+
+        if not base_url or not api_key:
+            raise RuntimeError("Azure配置缺失 base_url 或 api_key")
+
+        url = f"{base_url}/openai/deployments/{model}/chat/completions?api-version={api_version}"
+        payload = {
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens
+        }
+        headers = {"api-key": api_key, "Content-Type": "application/json"}
+        headers.update(provider.get("extra_headers", {}))
+
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+
+        completion_text = data["choices"][0]["message"]["content"]
+        usage = data.get("usage")
+        return completion_text, usage
+
+    async def _call_anthropic(self, messages, model, max_tokens):
+        provider = self.active_provider or {}
+        base_url = provider.get("base_url") or "https://api.anthropic.com"
+        api_key = provider.get("api_key") or ""
+        api_version = provider.get("api_version") or "2023-06-01"
+
+        if not api_key:
+            raise RuntimeError("Anthropic配置缺失 api_key")
+
+        system_parts = [m["content"] for m in messages if m["role"] == "system"]
+        user_messages = [m for m in messages if m["role"] != "system"]
+        if system_parts and user_messages:
+            user_messages[0]["content"] = "System: " + " ".join(system_parts) + "\n" + user_messages[0]["content"]
+
+        url = f"{base_url}/v1/messages"
+        payload = {
+            "model": model,
+            "max_tokens": max_tokens or 1024,
+            "messages": user_messages
+        }
+        headers = {
+            "x-api-key": api_key,
+            "anthropic-version": api_version,
+            "content-type": "application/json"
+        }
+        headers.update(provider.get("extra_headers", {}))
+
+        async with httpx.AsyncClient(timeout=60) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+
+        content_blocks = data.get("content", [])
+        completion_text = content_blocks[0].get("text", "") if content_blocks else ""
+        usage = data.get("usage")
+        return completion_text, usage
 
     def _mock_response(self, messages: list) -> Dict[str, Any]:
         """
