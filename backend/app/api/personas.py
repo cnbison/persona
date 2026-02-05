@@ -13,6 +13,7 @@ from app.models.orm import AuthorPersonaORM, BookORM
 from app.crud.crud_series import create_persona, get_persona as get_persona_by_id
 from app.services.persona_builder import get_persona_builder
 from app.services.evidence_linker import get_evidence_linker
+from app.services.persona_card import build_persona_card
 
 router = APIRouter()
 
@@ -28,6 +29,12 @@ class CreatePersonaResponse(BaseModel):
     book_id: str
     author_name: str
     status: str
+
+
+class PersonaDiffRequest(BaseModel):
+    """Persona对比请求"""
+    source_id: str = Field(..., description="基准Persona ID")
+    target_id: str = Field(..., description="对比Persona ID")
 
 
 @router.post("/", summary="创建Persona")
@@ -194,6 +201,7 @@ async def list_personas(
                 "author_name": db_persona.author_name or "",
                 "thinking_style": db_persona.thinking_style or "analytical",
                 "tone": db_persona.tone or "",
+                "version": db_persona.version or "1.0",
                 "created_at": db_persona.created_at.isoformat() if db_persona.created_at else None
             })
 
@@ -273,6 +281,98 @@ async def get_persona(persona_id: str, db: Session = Depends(get_db)):
         raise
     except Exception as e:
         logger.error(f"❌ 获取Persona失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{persona_id}/card", summary="生成Persona卡片摘要")
+async def get_persona_card(persona_id: str, db: Session = Depends(get_db)):
+    """生成Persona卡片摘要（不落库）"""
+    try:
+        db_persona = get_persona_by_id(db, persona_id)
+        if not db_persona:
+            raise HTTPException(status_code=404, detail="Persona不存在")
+
+        # 自动补齐证据链接（若为空）
+        if not db_persona.evidence_links:
+            linker = get_evidence_linker()
+            db_persona.evidence_links = linker.build_links(db, db_persona)
+            db.commit()
+
+        card = build_persona_card(db_persona)
+
+        return {
+            "code": 200,
+            "message": "生成成功",
+            "data": card
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Persona卡片生成失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/diff", summary="Persona版本对比")
+async def diff_persona(
+    request: PersonaDiffRequest,
+    db: Session = Depends(get_db)
+):
+    """对比两个Persona的字段差异"""
+    try:
+        source = get_persona_by_id(db, request.source_id)
+        target = get_persona_by_id(db, request.target_id)
+        if not source or not target:
+            raise HTTPException(status_code=404, detail="Persona不存在")
+
+        diff_fields = [
+            "thinking_style",
+            "logic_pattern",
+            "reasoning_framework",
+            "core_philosophy",
+            "theoretical_framework",
+            "key_concepts",
+            "narrative_style",
+            "language_rhythm",
+            "sentence_structure",
+            "rhetorical_devices",
+            "value_orientation",
+            "value_judgment_framework",
+            "core_positions",
+            "opposed_positions",
+            "tone",
+            "emotion_tendency",
+            "expressiveness",
+            "personality_traits",
+            "communication_style",
+            "attitude_toward_audience",
+            "version"
+        ]
+
+        changes = []
+        for field in diff_fields:
+            a_value = getattr(source, field, None)
+            b_value = getattr(target, field, None)
+            if a_value != b_value:
+                changes.append({
+                    "field": field,
+                    "source": a_value,
+                    "target": b_value
+                })
+
+        return {
+            "code": 200,
+            "message": "获取成功",
+            "data": {
+                "source_id": source.persona_id,
+                "target_id": target.persona_id,
+                "changes": changes,
+                "total_changes": len(changes)
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Persona对比失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

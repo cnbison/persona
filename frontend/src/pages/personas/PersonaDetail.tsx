@@ -1,10 +1,10 @@
 // Persona详情页面
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Brain, BookOpen, MessageSquare, Heart, Sparkles } from 'lucide-react';
 import { personasApi } from '../../services/personas';
 import { personaExportApi } from '../../services/personaExport';
-import type { AuthorPersona } from '../../types/persona';
+import type { AuthorPersona, PersonaCardSummary, PersonaDiffResult } from '../../types/persona';
 
 export default function PersonaDetail() {
   const { personaId } = useParams<{ personaId: string }>();
@@ -17,12 +17,35 @@ export default function PersonaDetail() {
   const [generatingPrompt, setGeneratingPrompt] = useState(false);
   const [promptSuccess, setPromptSuccess] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [cardSummary, setCardSummary] = useState<PersonaCardSummary | null>(null);
+  const [cardLoading, setCardLoading] = useState(false);
+  const [cardError, setCardError] = useState<string | null>(null);
+  const [personaOptions, setPersonaOptions] = useState<AuthorPersona[]>([]);
+  const [diffTargetId, setDiffTargetId] = useState('');
+  const [diffResult, setDiffResult] = useState<PersonaDiffResult | null>(null);
+  const [diffLoading, setDiffLoading] = useState(false);
+  const [diffError, setDiffError] = useState<string | null>(null);
 
   useEffect(() => {
     if (personaId) {
       loadPersonaDetail();
     }
   }, [personaId]);
+
+  useEffect(() => {
+    const loadPersonaOptions = async () => {
+      if (!persona) return;
+      try {
+        const response = await personasApi.listPersonas();
+        const items = response?.data?.items || [];
+        setPersonaOptions(items);
+      } catch (err: any) {
+        console.error('加载Persona列表失败:', err);
+      }
+    };
+
+    loadPersonaOptions();
+  }, [persona]);
 
   const loadPersonaDetail = async () => {
     try {
@@ -83,6 +106,35 @@ export default function PersonaDetail() {
       alert(`导出失败: ${err.message || '未知错误'}`);
     } finally {
       setExporting(false);
+    }
+  };
+
+  const handleGenerateCard = async () => {
+    if (!personaId) return;
+    try {
+      setCardLoading(true);
+      setCardError(null);
+      const response = await personasApi.getPersonaCard(personaId);
+      setCardSummary(response.data);
+    } catch (err: any) {
+      setCardError(err.message || '生成失败');
+    } finally {
+      setCardLoading(false);
+    }
+  };
+
+  const handleDiff = async () => {
+    if (!personaId || !diffTargetId) return;
+    try {
+      setDiffLoading(true);
+      setDiffError(null);
+      const response = await personasApi.diffPersonas(personaId, diffTargetId);
+      setDiffResult(response.data);
+    } catch (err: any) {
+      setDiffError(err.message || '对比失败');
+      setDiffResult(null);
+    } finally {
+      setDiffLoading(false);
     }
   };
 
@@ -171,6 +223,15 @@ export default function PersonaDetail() {
       ],
     },
   ];
+
+  const diffCandidates = useMemo(() => {
+    if (!personaOptions.length || !persona) return [];
+    const sameAuthor = personaOptions.filter(
+      (item) => item.author_name === persona.author_name && item.persona_id !== persona.persona_id
+    );
+    if (sameAuthor.length > 0) return sameAuthor;
+    return personaOptions.filter((item) => item.persona_id !== persona.persona_id);
+  }, [personaOptions, persona]);
 
   return (
     <div className="space-y-6">
@@ -271,37 +332,54 @@ export default function PersonaDetail() {
             <h3 className="text-xl font-semibold text-gray-900">Persona卡片</h3>
             <p className="text-sm text-gray-500 mt-1">用于快速校准与复用</p>
           </div>
-          <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
-            版本 {persona.version || '1.0'}
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleGenerateCard}
+              disabled={cardLoading}
+              className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-60"
+            >
+              {cardLoading ? '生成中...' : '生成卡片摘要'}
+            </button>
+            <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+              版本 {persona.version || '1.0'}
+            </span>
+          </div>
         </div>
+
+        {cardError && (
+          <div className="mb-3 rounded-md bg-red-50 p-3 text-xs text-red-700">
+            {cardError}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-3">
             <div>
               <p className="text-xs text-gray-500 mb-1">一句话画像</p>
               <p className="text-sm text-gray-900">
-                {persona.core_philosophy || '暂无核心哲学摘要'}
+                {cardSummary?.one_liner || persona.core_philosophy || '暂无核心哲学摘要'}
               </p>
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-1">风格摘要</p>
               <p className="text-sm text-gray-900">
-                {[
-                  persona.thinking_style && `思维方式：${persona.thinking_style}`,
-                  persona.narrative_style && `叙事：${persona.narrative_style}`,
-                  persona.tone && `语气：${persona.tone}`,
-                ]
-                  .filter(Boolean)
-                  .join(' · ') || '暂无风格摘要'}
+                {cardSummary?.style_summary ||
+                  [
+                    persona.thinking_style && `思维方式：${persona.thinking_style}`,
+                    persona.narrative_style && `叙事：${persona.narrative_style}`,
+                    persona.tone && `语气：${persona.tone}`,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ') || '暂无风格摘要'}
               </p>
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-1">边界提示</p>
               <p className="text-sm text-gray-900">
-                {persona.opposed_positions && persona.opposed_positions.length > 0
-                  ? `避免主张：${persona.opposed_positions.join('、')}`
-                  : '暂无明确边界提示'}
+                {cardSummary?.boundary_tip ||
+                  (persona.opposed_positions && persona.opposed_positions.length > 0
+                    ? `避免主张：${persona.opposed_positions.join('、')}`
+                    : '暂无明确边界提示')}
               </p>
             </div>
           </div>
@@ -310,27 +388,104 @@ export default function PersonaDetail() {
             <div>
               <p className="text-xs text-gray-500 mb-1">核心立场</p>
               <p className="text-sm text-gray-900">
-                {(persona.core_positions || []).slice(0, 4).join('、') || '暂无'}
+                {(cardSummary?.core_positions || persona.core_positions || []).slice(0, 4).join('、') || '暂无'}
               </p>
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-1">关键概念</p>
               <p className="text-sm text-gray-900">
-                {Object.keys(persona.key_concepts || {}).length > 0
-                  ? Object.keys(persona.key_concepts || {}).slice(0, 4).join('、')
+                {(cardSummary?.key_concepts || Object.keys(persona.key_concepts || {})).length > 0
+                  ? (cardSummary?.key_concepts || Object.keys(persona.key_concepts || {})).slice(0, 4).join('、')
                   : '暂无'}
               </p>
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-1">证据链接</p>
               <p className="text-sm text-gray-900">
-                {(persona.evidence_links || []).length > 0
-                  ? persona.evidence_links.join('、')
+                {(cardSummary?.evidence_links || persona.evidence_links || []).length > 0
+                  ? (cardSummary?.evidence_links || persona.evidence_links || []).join('、')
                   : '暂无（待接入证据库）'}
               </p>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Persona版本对比 */}
+      <div className="bg-white shadow rounded-lg border border-gray-200 p-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900">版本对比</h3>
+            <p className="text-sm text-gray-500 mt-1">选择另一个Persona进行差异对照</p>
+          </div>
+          <button
+            onClick={handleDiff}
+            disabled={!diffTargetId || diffLoading}
+            className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-60"
+          >
+            {diffLoading ? '对比中...' : '开始对比'}
+          </button>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <label className="text-sm text-gray-600">
+            选择对比Persona
+            <select
+              value={diffTargetId}
+              onChange={(e) => setDiffTargetId(e.target.value)}
+              className="mt-1 w-full rounded-md border-gray-200 text-sm"
+            >
+              <option value="">未选择</option>
+              {diffCandidates.map((item) => (
+                <option key={item.persona_id} value={item.persona_id}>
+                  {item.author_name} - {item.persona_id.slice(0, 8)} (版本 {item.version || '1.0'})
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="text-xs text-gray-500 flex items-end">
+            {diffCandidates.length === 0 ? '暂无可对比Persona' : '优先展示同作者版本'}
+          </div>
+        </div>
+
+        {diffError && (
+          <div className="mt-3 rounded-md bg-red-50 p-3 text-xs text-red-700">
+            {diffError}
+          </div>
+        )}
+
+        {diffResult && (
+          <div className="mt-4">
+            <div className="text-sm text-gray-700">
+              共发现 {diffResult.total_changes} 项差异
+            </div>
+            {diffResult.total_changes === 0 ? (
+              <div className="mt-3 text-sm text-gray-500">暂无差异</div>
+            ) : (
+              <div className="mt-3 space-y-3">
+                {diffResult.changes.map((change, index) => (
+                  <div key={`${change.field}-${index}`} className="rounded-lg border border-gray-200 p-3">
+                    <div className="text-xs font-semibold text-gray-700">{change.field}</div>
+                    <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-gray-600">
+                      <div>
+                        <p className="text-gray-500 mb-1">当前</p>
+                        <pre className="whitespace-pre-wrap break-words">
+                          {JSON.stringify(change.source, null, 2)}
+                        </pre>
+                      </div>
+                      <div>
+                        <p className="text-gray-500 mb-1">对比</p>
+                        <pre className="whitespace-pre-wrap break-words">
+                          {JSON.stringify(change.target, null, 2)}
+                        </pre>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 6维度可视化 */}

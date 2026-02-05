@@ -1,6 +1,6 @@
 // Persona API服务
 import apiClient from './api';
-import type { AuthorPersona } from '../types/persona';
+import type { AuthorPersona, PersonaCardSummary, PersonaDiffResult } from '../types/persona';
 
 export interface CreatePersonaRequest {
   book_id: string;
@@ -51,6 +51,17 @@ export const personasApi = {
     return apiClient.get<any, ListPersonasResponse>('/personas', {
       skip,
       limit,
+    });
+  },
+
+  getPersonaCard: async (personaId: string) => {
+    return apiClient.get<any, PersonaCardSummary>(`/personas/${personaId}/card`);
+  },
+
+  diffPersonas: async (sourceId: string, targetId: string) => {
+    return apiClient.post<any, PersonaDiffResult>('/personas/diff', {
+      source_id: sourceId,
+      target_id: targetId,
     });
   },
 };

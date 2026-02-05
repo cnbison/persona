@@ -49,3 +49,28 @@ export interface AuthorPersona {
   evidence_links?: string[];
   created_at?: string;
 }
+
+export interface PersonaCardSummary {
+  persona_id: string;
+  author_name: string;
+  version: string;
+  one_liner: string;
+  style_summary: string;
+  boundary_tip: string;
+  core_positions: string[];
+  key_concepts: string[];
+  evidence_links: string[];
+}
+
+export interface PersonaDiffChange {
+  field: string;
+  source: any;
+  target: any;
+}
+
+export interface PersonaDiffResult {
+  source_id: string;
+  target_id: string;
+  total_changes: number;
+  changes: PersonaDiffChange[];
+}
