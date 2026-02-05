@@ -9,6 +9,7 @@ from loguru import logger
 import sys
 
 from app.utils.config import settings
+from app.database import init_db, ensure_schema
 from app.api import health, books, personas, outlines, scripts, audiences, outputs, diff, diagnostics, model_providers, evidence
 
 # 配置日志
@@ -52,6 +53,8 @@ async def startup_event():
     logger.info(f"📝 OpenAI模型: {settings.openai_model}")
     logger.info(f"📚 著作目录: {settings.books_dir}")
     logger.info(f"💾 数据库: {settings.database_url}")
+    init_db()
+    ensure_schema()
 
 
 @app.on_event("shutdown")

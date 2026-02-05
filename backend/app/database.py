@@ -1,7 +1,7 @@
 """
 数据库连接管理
 """
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from pathlib import Path
@@ -50,6 +50,23 @@ def init_db():
     logger.info("🔧 初始化数据库...")
     Base.metadata.create_all(bind=engine)
     logger.info("✅ 数据库初始化完成")
+
+
+def ensure_schema():
+    """
+    轻量级迁移：补齐缺失字段
+    """
+    try:
+        with engine.begin() as conn:
+            # books.parse_stats
+            result = conn.execute(text("PRAGMA table_info(books)"))
+            columns = {row[1] for row in result.fetchall()}
+            if "parse_stats" not in columns:
+                logger.info("🔧 发现缺失列 books.parse_stats，执行迁移...")
+                conn.execute(text("ALTER TABLE books ADD COLUMN parse_stats JSON"))
+                logger.info("✅ 已补齐 books.parse_stats")
+    except Exception as e:
+        logger.error(f"❌ 数据库迁移失败: {e}")
 
 
 def drop_db():
