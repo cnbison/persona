@@ -6,6 +6,7 @@ from app.services.dialogue_generator import get_dialogue_generator
 from app.services.audience_adapter import get_audience_adapter
 from app.services.output_generator import get_output_generator
 from app.services.diagnostic_evaluator import get_diagnostic_evaluator
+from app.services.evidence_linker import get_evidence_linker
 
 __all__ = [
     "get_document_parser",
@@ -14,5 +15,6 @@ __all__ = [
     "get_dialogue_generator",
     "get_audience_adapter",
     "get_output_generator",
-    "get_diagnostic_evaluator"
+    "get_diagnostic_evaluator",
+    "get_evidence_linker"
 ]

@@ -12,6 +12,7 @@ from app.database import get_db
 from app.models.orm import AuthorPersonaORM, BookORM
 from app.crud.crud_series import create_persona, get_persona as get_persona_by_id
 from app.services.persona_builder import get_persona_builder
+from app.services.evidence_linker import get_evidence_linker
 
 router = APIRouter()
 
@@ -225,6 +226,12 @@ async def get_persona(persona_id: str, db: Session = Depends(get_db)):
 
         if not db_persona:
             raise HTTPException(status_code=404, detail="Persona不存在")
+
+        # 自动补齐证据链接（若为空）
+        if not db_persona.evidence_links:
+            linker = get_evidence_linker()
+            db_persona.evidence_links = linker.build_links(db, db_persona)
+            db.commit()
 
         # 转换为响应格式
         persona_data = {
