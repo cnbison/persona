@@ -65,6 +65,18 @@ def ensure_schema():
                 logger.info("🔧 发现缺失列 books.parse_stats，执行迁移...")
                 conn.execute(text("ALTER TABLE books ADD COLUMN parse_stats JSON"))
                 logger.info("✅ 已补齐 books.parse_stats")
+
+            # author_personas.version
+            result = conn.execute(text("PRAGMA table_info(author_personas)"))
+            columns = {row[1] for row in result.fetchall()}
+            if "version" not in columns:
+                logger.info("🔧 发现缺失列 author_personas.version，执行迁移...")
+                conn.execute(text("ALTER TABLE author_personas ADD COLUMN version VARCHAR"))
+                logger.info("✅ 已补齐 author_personas.version")
+            if "evidence_links" not in columns:
+                logger.info("🔧 发现缺失列 author_personas.evidence_links，执行迁移...")
+                conn.execute(text("ALTER TABLE author_personas ADD COLUMN evidence_links JSON"))
+                logger.info("✅ 已补齐 author_personas.evidence_links")
     except Exception as e:
         logger.error(f"❌ 数据库迁移失败: {e}")
 
