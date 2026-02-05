@@ -3,6 +3,7 @@
 负责解析各种格式的著作文件，提取结构化内容
 """
 import re
+from collections import Counter
 from pathlib import Path
 from typing import Optional, List, Dict
 from loguru import logger
@@ -98,6 +99,7 @@ class DocumentParser:
         logger.info("🧹 开始清洗文本...")
         text = self.text_processor.clean_text(text)
         text = self.text_processor.remove_redundant_info(text)
+        text = self._remove_repeated_lines(text)
         logger.info(f"✅ 文本清洗完成，清洗后字数: {len(text)}")
 
         # 识别章节
@@ -207,6 +209,43 @@ class DocumentParser:
             logger.error(f"❌ DOCX解析失败: {e}")
             raise
 
+    def _remove_repeated_lines(self, text: str) -> str:
+        """移除重复页眉页脚等噪音行"""
+        if not text:
+            return text
+
+        lines = [line.strip() for line in text.split('\n')]
+        total = len(lines)
+        counts = Counter([line for line in lines if line])
+
+        def is_noise(line: str) -> bool:
+            if not line:
+                return False
+            if re.match(r'^\d+$', line):
+                return True
+            if re.match(r'^-?\s*\d+\s*-?$', line):
+                return True
+            if re.match(r'^第?\s*\d+\s*页$', line):
+                return True
+            if re.match(r'^[IVXLCM]+$', line):
+                return True
+            if re.match(r'^[\W_]+$', line):
+                return True
+            return False
+
+        filtered = []
+        for line in lines:
+            if not line:
+                filtered.append("")
+                continue
+            if is_noise(line):
+                continue
+            if len(line) <= 30 and counts[line] >= 3 and (counts[line] / max(total, 1)) >= 0.05:
+                continue
+            filtered.append(line)
+
+        return "\n".join(filtered).strip()
+
     def _identify_chapters(self, text: str, file_type: str) -> List[Chapter]:
         """
         识别章节结构
@@ -247,6 +286,9 @@ class DocumentParser:
             r'^[\u4e00-\u9fff]{1,3}第[一二三四五六七八九十百零\d]+[卷篇章期]\s*',  # "学而第一卷"、"为政第二篇"（必须以卷/篇/章/期结尾）
             r'^[\u4e00-\u9fff]{1,3}第\d+[卷篇章期]\s*',  # "公冶长第五卷"、"先进第十一篇"（必须以卷/篇/章/期结尾）
             r'^Chapter\s*\d+',  # "Chapter X"
+            r'^(Chapter|CHAPTER)\s+[IVXLC]+',  # "CHAPTER IV"
+            r'^(Part|PART)\s+\d+',  # "Part 1"
+            r'^(Part|PART)\s+[IVXLC]+',  # "PART II"
             r'^第[一二三四五六七八九十百零\d]+节\s*',  # "第X节"
             r'^[一二三四五六七八九十百零\d]+\.\s',  # "一. "、"1. "
             r'^[一二三四五六七八九十百零]+、\s',  # "一、"、"二、"
