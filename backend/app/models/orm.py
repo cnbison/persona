@@ -55,12 +55,14 @@ class ChapterORM(Base):
     content = Column(Text, nullable=False)
     page_range = Column(String, nullable=True)
     word_count = Column(Integer, default=0)
+    paragraph_count = Column(Integer, default=0)
 
     created_at = Column(DateTime, default=datetime.now)
 
     # 关联关系
     book = relationship("BookORM", back_populates="chapters")
     viewpoints = relationship("CoreViewpointORM", back_populates="chapter", cascade="all, delete-orphan")
+    paragraphs = relationship("ParagraphORM", back_populates="chapter", cascade="all, delete-orphan")
 
 
 class CoreViewpointORM(Base):
@@ -81,6 +83,46 @@ class CoreViewpointORM(Base):
     # 关联关系
     book = relationship("BookORM", back_populates="viewpoints")
     chapter = relationship("ChapterORM", back_populates="viewpoints")
+    evidences = relationship("EvidenceORM", back_populates="viewpoint", cascade="all, delete-orphan")
+
+
+class ParagraphORM(Base):
+    """段落表"""
+    __tablename__ = "paragraphs"
+
+    paragraph_id = Column(String, primary_key=True, index=True)
+    book_id = Column(String, ForeignKey("books.book_id"), nullable=False)
+    chapter_id = Column(String, ForeignKey("chapters.chapter_id"), nullable=False)
+    paragraph_number = Column(Integer, nullable=False)
+    content = Column(Text, nullable=False)
+    word_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.now)
+
+    # 关联关系
+    chapter = relationship("ChapterORM", back_populates="paragraphs")
+    evidences = relationship("EvidenceORM", back_populates="paragraph", cascade="all, delete-orphan")
+
+
+class EvidenceORM(Base):
+    """证据表（观点-原文-上下文绑定）"""
+    __tablename__ = "evidences"
+
+    evidence_id = Column(String, primary_key=True, index=True)
+    book_id = Column(String, ForeignKey("books.book_id"), nullable=False)
+    chapter_id = Column(String, ForeignKey("chapters.chapter_id"), nullable=False)
+    paragraph_id = Column(String, ForeignKey("paragraphs.paragraph_id"), nullable=True)
+    viewpoint_id = Column(String, ForeignKey("core_viewpoints.viewpoint_id"), nullable=True)
+
+    evidence_text = Column(Text, nullable=False)
+    context_before = Column(Text, nullable=True)
+    context_after = Column(Text, nullable=True)
+    keywords = Column(JSON, default=list)
+    score = Column(Float, default=1.0)
+    created_at = Column(DateTime, default=datetime.now)
+
+    # 关联关系
+    viewpoint = relationship("CoreViewpointORM", back_populates="evidences")
+    paragraph = relationship("ParagraphORM", back_populates="evidences")
 
 
 class AuthorPersonaORM(Base):

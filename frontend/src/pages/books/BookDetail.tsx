@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, FileText, BookOpen, Upload } from 'lucide-react';
 import { booksApi } from '../../services/books';
+import { evidenceApi } from '../../services/evidence';
 import type { BookDetail as BookDetailType } from '../../types/book';
 
 export default function BookDetail() {
@@ -13,6 +14,7 @@ export default function BookDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [displayedViewpoints, setDisplayedViewpoints] = useState(10);
+  const [buildingEvidence, setBuildingEvidence] = useState(false);
 
   useEffect(() => {
     if (bookId) {
@@ -31,6 +33,19 @@ export default function BookDetail() {
       console.error('加载著作详情失败:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleBuildEvidence = async () => {
+    if (!bookId) return;
+    try {
+      setBuildingEvidence(true);
+      await evidenceApi.buildEvidence(bookId);
+      alert('证据库构建完成');
+    } catch (err: any) {
+      alert(err.message || '构建失败');
+    } finally {
+      setBuildingEvidence(false);
     }
   };
 
@@ -82,13 +97,22 @@ export default function BookDetail() {
               <h1 className="text-3xl font-bold text-gray-900">{book.title}</h1>
               <p className="mt-2 text-lg text-gray-600">{book.author}</p>
             </div>
-            <div className="flex gap-3">
-              <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
-                {book.language}
-              </span>
-              <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-800">
-                {book.file_type}
-              </span>
+            <div className="flex items-center gap-3">
+              <div className="flex gap-3">
+                <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800">
+                  {book.language}
+                </span>
+                <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-800">
+                  {book.file_type}
+                </span>
+              </div>
+              <button
+                onClick={handleBuildEvidence}
+                disabled={buildingEvidence}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {buildingEvidence ? '构建中...' : '构建证据库'}
+              </button>
             </div>
           </div>
 

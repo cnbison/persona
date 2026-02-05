@@ -9,7 +9,7 @@ from loguru import logger
 import sys
 
 from app.utils.config import settings
-from app.api import health, books, personas, outlines, scripts, audiences, outputs, diff, diagnostics, model_providers
+from app.api import health, books, personas, outlines, scripts, audiences, outputs, diff, diagnostics, model_providers, evidence
 
 # 配置日志
 logger.remove()  # 移除默认handler
@@ -71,6 +71,7 @@ app.include_router(outputs.router, prefix="/api/outputs", tags=["输出与诊断
 app.include_router(diff.router, prefix="/api/diff", tags=["Diff对比"])
 app.include_router(diagnostics.router, prefix="/api/diagnostics", tags=["诊断指标"])
 app.include_router(model_providers.router, prefix="/api/model-providers", tags=["模型配置"])
+app.include_router(evidence.router, prefix="/api/evidence", tags=["证据库"])
 
 
 # 根路径
