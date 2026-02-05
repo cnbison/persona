@@ -1,26 +1,53 @@
 // 著作详情页面
-import { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, FileText, BookOpen, Upload } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, User, FileText, BookOpen } from 'lucide-react';
 import { booksApi } from '../../services/books';
 import { evidenceApi } from '../../services/evidence';
 import type { BookDetail as BookDetailType } from '../../types/book';
 
+interface ParagraphItem {
+  paragraph_id: string;
+  chapter_id: string;
+  paragraph_number: number;
+  content: string;
+  word_count: number;
+}
+
 export default function BookDetail() {
   const { bookId } = useParams<{ bookId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [book, setBook] = useState<BookDetailType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [displayedViewpoints, setDisplayedViewpoints] = useState(10);
   const [buildingEvidence, setBuildingEvidence] = useState(false);
+  const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
+  const [selectedParagraphId, setSelectedParagraphId] = useState<string | null>(null);
+  const [selectedParagraphNumber, setSelectedParagraphNumber] = useState<number | null>(null);
+  const [paragraphs, setParagraphs] = useState<ParagraphItem[]>([]);
+  const [paragraphsLoading, setParagraphsLoading] = useState(false);
+  const [paragraphsError, setParagraphsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (bookId) {
       loadBookDetail();
     }
   }, [bookId]);
+
+  useEffect(() => {
+    const chapterId = searchParams.get('chapter_id');
+    const paragraphId = searchParams.get('paragraph_id');
+    const paragraphNumberParam = searchParams.get('paragraph_number');
+    setSelectedChapterId(chapterId);
+    setSelectedParagraphId(paragraphId);
+    setSelectedParagraphNumber(paragraphNumberParam ? Number(paragraphNumberParam) : null);
+    if (chapterId) {
+      loadParagraphs(chapterId);
+    }
+  }, [searchParams]);
 
   const loadBookDetail = async () => {
     try {
@@ -54,6 +81,73 @@ export default function BookDetail() {
       setDisplayedViewpoints(prev => Math.min(prev + 10, book.viewpoints.length));
     }
   };
+
+  const loadParagraphs = async (chapterId: string) => {
+    try {
+      setParagraphsLoading(true);
+      setParagraphsError(null);
+      const response = await evidenceApi.listParagraphs(chapterId);
+      const items = response?.data?.items || [];
+      const sorted = [...items].sort((a, b) => a.paragraph_number - b.paragraph_number);
+      setParagraphs(sorted);
+    } catch (err: any) {
+      setParagraphsError(err.message || '段落加载失败');
+    } finally {
+      setParagraphsLoading(false);
+    }
+  };
+
+  const handleSelectChapter = (chapterId: string, paragraphId?: string, paragraphNumber?: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('chapter_id', chapterId);
+    if (paragraphId) {
+      params.set('paragraph_id', paragraphId);
+    } else {
+      params.delete('paragraph_id');
+    }
+    if (paragraphNumber) {
+      params.set('paragraph_number', String(paragraphNumber));
+    } else {
+      params.delete('paragraph_number');
+    }
+    setSearchParams(params);
+  };
+
+  const handleClearLocation = () => {
+    const params = new URLSearchParams(searchParams);
+    params.delete('chapter_id');
+    params.delete('paragraph_id');
+    params.delete('paragraph_number');
+    setSearchParams(params);
+    setSelectedChapterId(null);
+    setSelectedParagraphId(null);
+    setSelectedParagraphNumber(null);
+    setParagraphs([]);
+  };
+
+  useEffect(() => {
+    if (!paragraphs.length) return;
+    if (!selectedParagraphId && !selectedParagraphNumber) return;
+    const targetById = selectedParagraphId
+      ? document.getElementById(`paragraph-${selectedParagraphId}`)
+      : null;
+    if (targetById) {
+      targetById.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (selectedParagraphNumber) {
+      const targetByNumber = document.querySelector(`[data-paragraph-number="${selectedParagraphNumber}"]`);
+      if (targetByNumber) {
+        (targetByNumber as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [paragraphs, selectedParagraphId, selectedParagraphNumber]);
+
+  const selectedChapterTitle = useMemo(() => {
+    if (!book || !selectedChapterId) return null;
+    const chapter = book.chapters.find((item) => item.chapter_id === selectedChapterId);
+    return chapter?.title ?? null;
+  }, [book, selectedChapterId]);
 
   if (loading) {
     return (
@@ -187,7 +281,14 @@ export default function BookDetail() {
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                     第{chapter.chapter_number}章
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-900">{chapter.title}</td>
+                  <td className="px-4 py-3 text-sm text-gray-900">
+                    <button
+                      onClick={() => handleSelectChapter(chapter.chapter_id)}
+                      className="text-left text-blue-600 hover:underline"
+                    >
+                      {chapter.title}
+                    </button>
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                     {chapter.word_count.toLocaleString()} 字
                   </td>
@@ -203,6 +304,64 @@ export default function BookDetail() {
           </div>
         )}
       </div>
+
+      {/* 章节段落定位 */}
+      {selectedChapterId && (
+        <div className="bg-white shadow rounded-lg border border-gray-200 p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">章节段落视图</h2>
+              <p className="mt-1 text-sm text-gray-600">
+                {selectedChapterTitle ? selectedChapterTitle : '章节'} ({selectedChapterId})
+              </p>
+            </div>
+            <button
+              onClick={handleClearLocation}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              清除定位
+            </button>
+          </div>
+
+          {paragraphsError && (
+            <div className="mt-4 rounded-md bg-red-50 p-3 text-sm text-red-800">
+              {paragraphsError}
+            </div>
+          )}
+
+          {paragraphsLoading ? (
+            <div className="mt-6 text-center text-sm text-gray-500">段落加载中...</div>
+          ) : (
+            <div className="mt-6 space-y-4">
+              {paragraphs.length === 0 ? (
+                <div className="text-sm text-gray-500">暂无段落信息</div>
+              ) : (
+                paragraphs.map((paragraph) => {
+                  const highlighted =
+                    (selectedParagraphId && paragraph.paragraph_id === selectedParagraphId) ||
+                    (selectedParagraphNumber && paragraph.paragraph_number === selectedParagraphNumber);
+                  return (
+                    <div
+                      key={paragraph.paragraph_id}
+                      id={`paragraph-${paragraph.paragraph_id}`}
+                      data-paragraph-number={paragraph.paragraph_number}
+                      className={`rounded-lg border px-4 py-3 ${highlighted ? 'border-blue-400 bg-blue-50' : 'border-gray-200'}`}
+                    >
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span>段落 #{paragraph.paragraph_number}</span>
+                        <span>{paragraph.word_count.toLocaleString()} 字</span>
+                      </div>
+                      <p className="mt-2 whitespace-pre-wrap text-sm text-gray-900">
+                        {paragraph.content}
+                      </p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 核心观点（显示前10个） */}
       <div className="bg-white shadow rounded-lg border border-gray-200 p-6">

@@ -1,5 +1,6 @@
 // 证据检索页面
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, BookOpen } from 'lucide-react';
 import { evidenceApi } from '../../services/evidence';
 
@@ -26,6 +27,15 @@ export default function EvidenceSearch() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<EvidenceItem[]>([]);
+  const navigate = useNavigate();
+
+  const buildLocationQuery = (item: EvidenceItem) => {
+    const params = new URLSearchParams();
+    if (item.chapter_id) params.set('chapter_id', item.chapter_id);
+    if (item.paragraph_id) params.set('paragraph_id', item.paragraph_id);
+    if (item.paragraph_number) params.set('paragraph_number', String(item.paragraph_number));
+    return params.toString();
+  };
 
   const handleSearch = async () => {
     try {
@@ -124,7 +134,20 @@ export default function EvidenceSearch() {
                       <span>段落 #{item.paragraph_number}</span>
                     )}
                   </div>
-                  <span>Score: {item.score ?? 1.0}</span>
+                  <div className="flex items-center gap-3">
+                    <span>Score: {item.score ?? 1.0}</span>
+                    <button
+                      onClick={() => {
+                        if (!item.book_id || !item.chapter_id) return;
+                        const query = buildLocationQuery(item);
+                        navigate(`/books/${item.book_id}${query ? `?${query}` : ''}`);
+                      }}
+                      disabled={!item.book_id || !item.chapter_id}
+                      className="inline-flex items-center rounded-md border border-blue-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      定位章节
+                    </button>
+                  </div>
                 </div>
                 <p className="mt-2 text-sm text-gray-900 whitespace-pre-wrap">{item.evidence_text}</p>
                 {item.context_before && (
