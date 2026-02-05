@@ -359,6 +359,10 @@ class DocumentParser:
                 return True
             if re.match(r'^第?\s*\d+\s*页$', line):
                 return True
+            if line.startswith("参见") and "《" in line:
+                return True
+            if line.startswith("见") and "《" in line:
+                return True
             return False
 
         # 策略1: 通用章节标题评分
@@ -368,6 +372,7 @@ class DocumentParser:
                 continue
 
             score = 0
+            has_structure = False
             # 行长度更像标题（短行）
             if 1 <= len(stripped_line) <= 20:
                 score += 2
@@ -378,11 +383,13 @@ class DocumentParser:
             for pattern in chapter_patterns:
                 if re.match(pattern, stripped_line):
                     score += 3
+                    has_structure = True
                     break
 
             # 章节关键词
             if re.search(r'(章|卷|篇|节|Chapter|CHAPTER|Part|PART)', stripped_line):
                 score += 2
+                has_structure = True
 
             # 前后空行（标题常独占行）
             prev_line = lines[i - 1].strip() if i > 0 else ""
@@ -392,7 +399,9 @@ class DocumentParser:
             if not next_line:
                 score += 1
 
-            if score >= 4:
+            # 若缺少结构特征，提高阈值，避免脚注误判为章节
+            threshold = 4 if has_structure else 6
+            if score >= threshold:
                 title = stripped_line
                 if '第【' in title and '段：' in title:
                     parts = title.split('：', 1)
