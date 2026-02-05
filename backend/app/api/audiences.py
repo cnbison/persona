@@ -18,6 +18,7 @@ from app.crud.crud_audience import (
     update_audience_persona,
     delete_audience_persona
 )
+from app.services.audience_adapter import get_audience_adapter
 
 router = APIRouter()
 
@@ -190,6 +191,48 @@ async def get_audience_detail(audience_id: str, db: Session = Depends(get_db)):
         raise
     except Exception as e:
         logger.error(f"❌ 获取受众Persona详情失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/{audience_id}/constraints", summary="获取受众表达约束")
+async def get_audience_constraints(audience_id: str, db: Session = Depends(get_db)):
+    """获取受众Persona的表达约束与目标"""
+    try:
+        audience = get_audience_persona(db, audience_id)
+        if not audience:
+            raise HTTPException(status_code=404, detail="受众Persona不存在")
+
+        audience_pydantic = AudiencePersona(
+            audience_id=audience.audience_id,
+            label=audience.label,
+            book_id=audience.book_id,
+            education_stage=audience.education_stage,
+            prior_knowledge=audience.prior_knowledge,
+            cognitive_preference=audience.cognitive_preference,
+            language_preference=audience.language_preference,
+            tone_preference=audience.tone_preference,
+            term_density=audience.term_density,
+            sentence_length=audience.sentence_length,
+            abstraction_level=audience.abstraction_level,
+            example_complexity=audience.example_complexity,
+            proof_depth=audience.proof_depth,
+            constraints=audience.constraints or []
+        )
+
+        adapter = get_audience_adapter()
+        constraints = adapter.build_constraints(audience_pydantic)
+
+        return {
+            "code": 200,
+            "message": "获取成功",
+            "data": {
+                "constraints": constraints
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ 获取受众表达约束失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

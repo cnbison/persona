@@ -1,7 +1,9 @@
 // 输出内容生成页面
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { outputsApi } from '../../services/outputs';
+import { audiencesApi } from '../../services/audiences';
+import type { AudienceConstraints, AudiencePersona } from '../../types/audience';
 
 const defaultForm = {
   book_id: '',
@@ -31,6 +33,46 @@ export default function OutputGenerate() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resultId, setResultId] = useState<string | null>(null);
+  const [audiences, setAudiences] = useState<AudiencePersona[]>([]);
+  const [audiencesLoading, setAudiencesLoading] = useState(false);
+  const [constraints, setConstraints] = useState<AudienceConstraints | null>(null);
+  const [constraintsLoading, setConstraintsLoading] = useState(false);
+  const [constraintsError, setConstraintsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadAudiences = async () => {
+      try {
+        setAudiencesLoading(true);
+        const response = await audiencesApi.listAudiences();
+        setAudiences(response?.data?.audiences || []);
+      } catch (err: any) {
+        console.error('加载受众Persona失败', err);
+      } finally {
+        setAudiencesLoading(false);
+      }
+    };
+
+    loadAudiences();
+  }, []);
+
+  const loadConstraints = async (audienceId: string) => {
+    if (!audienceId) {
+      setConstraints(null);
+      setConstraintsError(null);
+      return;
+    }
+    try {
+      setConstraintsLoading(true);
+      setConstraintsError(null);
+      const response = await audiencesApi.getAudienceConstraints(audienceId);
+      setConstraints(response?.data?.constraints || null);
+    } catch (err: any) {
+      setConstraintsError(err.message || '加载约束失败');
+      setConstraints(null);
+    } finally {
+      setConstraintsLoading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     try {
@@ -153,12 +195,42 @@ export default function OutputGenerate() {
             />
           </label>
           <label className="text-sm text-gray-600">
-            受众Persona ID（可选）
-            <input
+            受众Persona（可选）
+            <select
               value={form.audience_persona_id}
-              onChange={(e) => setForm({ ...form, audience_persona_id: e.target.value })}
+              onChange={(e) => {
+                const value = e.target.value;
+                setForm({ ...form, audience_persona_id: value });
+                loadConstraints(value);
+              }}
               className="mt-1 w-full rounded-md border-gray-200 text-sm"
-            />
+            >
+              <option value="">未选择</option>
+              {audiences.map((audience) => (
+                <option key={audience.audience_id} value={audience.audience_id}>
+                  {audience.label} ({audience.audience_id})
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-400">
+              {audiencesLoading ? '加载受众列表中...' : '如需手动填写ID，可直接在下方输入'}
+            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                value={form.audience_persona_id}
+                onChange={(e) => setForm({ ...form, audience_persona_id: e.target.value })}
+                placeholder="手动输入受众Persona ID"
+                className="w-full rounded-md border-gray-200 text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => loadConstraints(form.audience_persona_id)}
+                disabled={constraintsLoading || !form.audience_persona_id}
+                className="inline-flex items-center rounded-md border border-gray-200 px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+              >
+                {constraintsLoading ? '加载中...' : '加载约束'}
+              </button>
+            </div>
           </label>
           <label className="text-sm text-gray-600 md:col-span-2">
             锁定概念/事实（逗号分隔）
@@ -176,6 +248,51 @@ export default function OutputGenerate() {
             />
             自动生成诊断报告
           </label>
+        </div>
+
+        <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-900">受众适配约束</h3>
+            {constraints && (
+              <span className="text-xs text-gray-500">已加载受众约束</span>
+            )}
+          </div>
+
+          {constraintsError && (
+            <div className="mt-2 text-xs text-red-600">{constraintsError}</div>
+          )}
+
+          {!constraints && !constraintsLoading && (
+            <div className="mt-2 text-xs text-gray-500">
+              选择受众Persona后可查看自动生成的表达约束与目标。
+            </div>
+          )}
+
+          {constraintsLoading && (
+            <div className="mt-2 text-xs text-gray-500">约束加载中...</div>
+          )}
+
+          {constraints && (
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-gray-700">
+              <div>教育阶段：{constraints.education_stage}</div>
+              <div>先验知识：{constraints.prior_knowledge}</div>
+              <div>认知偏好：{constraints.cognitive_preference}</div>
+              <div>语言风格：{constraints.language_preference}</div>
+              <div>语气偏好：{constraints.tone_preference}</div>
+              <div>
+                术语密度：{constraints.term_density.label} (目标 {Math.round(constraints.term_density.target_ratio * 100)}%)
+              </div>
+              <div>
+                句长：{constraints.sentence_length.label} (约 {constraints.sentence_length.target_chars} 字)
+              </div>
+              <div>抽象程度：{constraints.abstraction_level.label}</div>
+              <div>案例复杂度：{constraints.example_complexity.label}</div>
+              <div>论证深度：{constraints.proof_depth.label}</div>
+              <div className="md:col-span-2">
+                硬性限制：{constraints.constraints.length > 0 ? constraints.constraints.join('、') : '无'}
+              </div>
+            </div>
+          )}
         </div>
 
         <label className="text-sm text-gray-600 block">

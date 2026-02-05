@@ -57,6 +57,10 @@ export const audiencesApi = {
     return apiClient.get(`/audiences/${audienceId}`);
   },
 
+  getAudienceConstraints: async (audienceId: string) => {
+    return apiClient.get(`/audiences/${audienceId}/constraints`);
+  },
+
   updateAudience: async (audienceId: string, payload: UpdateAudienceRequest) => {
     return apiClient.patch(`/audiences/${audienceId}`, payload);
   },
