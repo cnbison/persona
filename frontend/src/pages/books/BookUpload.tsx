@@ -22,11 +22,11 @@ export default function BookUpload() {
     const file = e.target.files?.[0];
     if (file) {
       // 验证文件类型
-      const validTypes = ['application/pdf', 'text/plain', 'application/epub+zip'];
+      const validTypes = ['application/pdf', 'text/plain', 'application/epub+zip', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
       const fileExtension = file.name.split('.').pop()?.toLowerCase();
 
-      if (!validTypes.includes(file.type) && !['pdf', 'txt', 'epub'].includes(fileExtension || '')) {
-        alert('请上传PDF、TXT或EPUB格式的文件');
+      if (!validTypes.includes(file.type) && !['pdf', 'txt', 'epub', 'docx'].includes(fileExtension || '')) {
+        alert('请上传PDF、TXT、EPUB或DOCX格式的文件');
         return;
       }
 
@@ -160,7 +160,7 @@ export default function BookUpload() {
                       type="file"
                       ref={fileInputRef}
                       className="sr-only"
-                      accept=".pdf,.txt,.epub,application/pdf,text/plain,application/epub+zip"
+                      accept=".pdf,.txt,.epub,.docx,application/pdf,text/plain,application/epub+zip,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                       onChange={handleFileSelect}
                     />
                   </label>

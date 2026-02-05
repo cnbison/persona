@@ -1,7 +1,7 @@
 """
 著作管理API
 """
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import List
 from loguru import logger
@@ -22,8 +22,8 @@ router = APIRouter()
 @router.post("/upload", summary="上传并解析著作")
 async def upload_book(
     file: UploadFile = File(...),
-    title: str = None,
-    author: str = None,
+    title: str = Form(None),
+    author: str = Form(None),
     db: Session = Depends(get_db)
 ):
     """

@@ -355,7 +355,9 @@ export default function BookDetail() {
           ) : (
             <div className="mt-6 space-y-4">
               {paragraphs.length === 0 ? (
-                <div className="text-sm text-gray-500">暂无段落信息</div>
+                <div className="text-sm text-gray-500">
+                  暂无段落信息，请先点击上方“构建证据库”生成段落索引。
+                </div>
               ) : (
                 paragraphs.map((paragraph) => {
                   const highlighted =

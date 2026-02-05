@@ -294,6 +294,28 @@ class DocumentParser:
                 '血缘和地缘',
                 '名实的分离',
                 '从欲望到需要'
+            ],
+            '论语': [
+                '学而',
+                '为政',
+                '八佾',
+                '里仁',
+                '公冶长',
+                '雍也',
+                '述而',
+                '泰伯',
+                '子罕',
+                '乡党',
+                '先进',
+                '颜渊',
+                '子路',
+                '宪问',
+                '卫灵公',
+                '季氏',
+                '阳货',
+                '微子',
+                '子张',
+                '尧曰'
             ]
         }
 
@@ -312,6 +334,15 @@ class DocumentParser:
             r'^[一二三四五六七八九十百零\d]+\.\s',  # "一. "、"1. "
             r'^[一二三四五六七八九十百零]+、\s',  # "一、"、"二、"
         ]
+
+        def normalize_title(raw: str) -> str:
+            if not raw:
+                return ""
+            cleaned = re.sub(r'[\s\u3000]+', '', raw)
+            cleaned = re.sub(r'[·•\-\—\―\–\:\：\.\。]', '', cleaned)
+            cleaned = re.sub(r'[章节卷篇]', '', cleaned)
+            cleaned = cleaned.replace('第', '')
+            return cleaned
 
         # 查找所有章节标题位置
         chapter_positions = []
@@ -345,32 +376,32 @@ class DocumentParser:
                     stats["patterns_matched"] += 1
                     break
 
-        # 策略2: 如果没有找到，尝试匹配已知书籍的章节列表
-        if not chapter_positions:
-            for book_name, chapters_list in known_book_chapters.items():
-                # 检查文本中是否包含该书籍的章节标题
-                found_chapters = []
-                for chapter_title in chapters_list:
-                    if chapter_title in text:
-                        # 查找该章节标题在文本中的位置
-                        for i, line in enumerate(lines):
-                            if line.strip() == chapter_title:
-                                found_chapters.append({
-                                    'line_num': i,
-                                    'title': chapter_title,
-                                    'content_start': i + 1
-                                })
-                                break
+        # 策略2: 尝试匹配已知书籍的章节列表（更优先）
+        for book_name, chapters_list in known_book_chapters.items():
+            found_chapters = []
+            normalized_targets = {normalize_title(t): t for t in chapters_list}
 
-                # 如果找到至少3个章节，认为是匹配成功
-                if len(found_chapters) >= 3:
-                    # 按行号排序
-                    found_chapters.sort(key=lambda x: x['line_num'])
-                    chapter_positions = found_chapters
-                    stats["strategy"] = "known_book"
-                    stats["known_book_hit"] = book_name
-                    logger.info(f"✅ 识别为《{book_name}》格式，找到 {len(found_chapters)} 个章节")
-                    break
+            for i, line in enumerate(lines):
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                normalized_line = normalize_title(stripped)
+                if normalized_line in normalized_targets:
+                    found_chapters.append({
+                        'line_num': i,
+                        'title': normalized_targets[normalized_line],
+                        'content_start': i + 1
+                    })
+
+            # 如果找到至少一半章节（论语为10+），认为匹配成功
+            threshold = max(3, len(chapters_list) // 2)
+            if len(found_chapters) >= threshold:
+                found_chapters.sort(key=lambda x: x['line_num'])
+                chapter_positions = found_chapters
+                stats["strategy"] = "known_book"
+                stats["known_book_hit"] = book_name
+                logger.info(f"✅ 识别为《{book_name}》格式，找到 {len(found_chapters)} 个章节")
+                break
 
         # 如果没找到章节，按段落分割
         if not chapter_positions:
